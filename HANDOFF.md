@@ -7,7 +7,7 @@
 - 2026-09-28: baseline de versões, impacto do Prisma 7, `SERIAL` nas PKs e atualização do Excalidraw (seção 2b). Esta sessão.
 
 **Fase atual:** design, seguindo `superpowers:brainstorming` pelo **caminho arquitetural**. **Nenhum código foi escrito, e isso é intencional.** O hard-gate da skill só libera a implementação depois de três passos: spec escrita e aprovada, plano (`superpowers:writing-plans`) aprovado e método de execução escolhido.
-**Próxima etapa:** fechar os itens restantes de "Ainda em aberto", começando pela **decisão 2 (gerenciador de pacotes)**, e depois seguir para **rotas e contratos** (ver Next Steps).
+**Próxima etapa:** continuar **rotas e contratos** com a **decisão 7: Route Handler `GET /[slug]`** (302/404/410, página neutra para bots, registro pós-resposta com `after()`). A pauta de "Ainda em aberto" e a `createLink` (decisões 6a a 6c) já estão fechadas. Ver Next Steps.
 
 ---
 
@@ -164,9 +164,11 @@ Está no localStorage do Chrome do Rafael (excalidraw.com). **Ainda não foi exp
 Na ordem do processo arquitetural do `superpowers:brainstorming`:
 
 1. **Rotas e contratos** (próximo passo). Para cada um, definir entrada, saída, códigos HTTP e validação:
-   - ✅ **6a (2026-09-28): regras R1 a R6 da URL de destino**, registradas em `domain.md`, com aviso na criação para destino `http:`. ✅ **6b: limite de 1 a 1.000.000 e expiração por duração pronta ou fim do dia (America/Sao_Paulo), máximo de 5 anos.** Segue pendente a 6c (resposta e exibição do token);
-   - Server Action `createLink`: campos (URL, `max_clicks`, `expires_at`), limites (tamanho máximo da URL, faixa de `max_clicks`, data mínima e máxima de expiração) e resposta (link curto, link de gestão e QR);
-   - Route Handler `GET /[slug]`: 302, 404 ou 410, a **página neutra para bots** em links com limite e o registro pós-resposta;
+   - ✅ **Server Action `createLink` fechada em 2026-09-28** (tudo em `domain.md`):
+     - **6a:** regras R1 a R6 da URL de destino. `http:` é aceito, com aviso na criação;
+     - **6b:** limite de cliques de 1 a 1.000.000; expiração por duração pronta (1 h, 24 h, 7 dias, 30 dias) ou fim do dia em `America/Sao_Paulo`, com máximo de 5 anos;
+     - **6c:** token em base64url (43 caracteres), estado discriminado `CreateLinkState` (Server Action não tem status HTTP de erro), exibição única num card na tela de criação (sem redirect para `/manage`) e QR em PNG de 512 px. Nota: o `qrcode@1.5.4` traz `yargs@15`; reavaliar na spec;
+   - **Próximo: Route Handler `GET /[slug]`** (decisão 7): 302, 404 ou 410, a **página neutra para bots** em links com limite e o registro pós-resposta;
    - Page `/manage/[token]`: agregações e **janela de tempo do gráfico** (últimos N dias ou desde a criação?);
    - Server Action `deactivateLink`;
    - **D1 (camada de dados): driver adapter `@prisma/adapter-pg` (TCP, lib `pg`) ou `@prisma/adapter-neon` (driver serverless do Neon)**, com tabela de trade-offs (latência, conexão por invocação, compatibilidade com o pooler);
@@ -205,7 +207,10 @@ A ordem combinada com o Rafael é **uma decisão por mensagem**. A pauta é: ~~1
   - ~~convenção de nome de arquivo~~: ✅ kebab-case em tudo (`code-style.md`);
   - ~~padrão de commit~~: ✅ ver `code-style.md`.
 - ~~**Produto:** idioma da interface~~: ✅ pt-BR na UI e no README. O alvo atual são vagas no Brasil; i18n ficou fora de escopo, com o motivo no PRD.
-- **Repositório:** ✅ `git init` feito em 2026-09-28 (branch `main`), com um primeiro commit só de documentação. **Ainda não existe remoto:** o Rafael vai criar o repositório público no GitHub, e o push só acontece depois disso, com autorização dele. A spec será commitada na branch da spec (ex.: `feat/mvp`).
+- **Repositório:** ✅ público em **https://github.com/ribeirorafadev/url-shortener** (remoto `origin` via SSH, `git@github.com:ribeirorafadev/url-shortener.git`; o SSH da máquina já está autenticado como `ribeirorafadev`). `main` foi enviada em 2026-09-28 com dois commits de documentação (`fe90139`, `f482fb3`). A spec será commitada na branch dela (ex.: `feat/mvp`).
+  - **Push:** só com autorização explícita do Rafael na mensagem.
+  - **Descrição do "About"** no GitHub: o MCP do GitHub não edita metadados de repositório e o `gh` não está instalado, então o Rafael configura manualmente (texto sugerido na conversa de 2026-09-28).
+  - **Repositório público:** tudo o que é commitado fica visível, inclusive este HANDOFF. A varredura de 2026-09-28 não encontrou segredos nem dados pessoais. O `.gitignore` foi reorganizado por seções, e a política do `.npmrc` sem token e dos artefatos de teste ignorados está em `security.md`.
 
 ## Preferências do Rafael relevantes para a sessão
 
