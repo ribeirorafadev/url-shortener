@@ -14,7 +14,21 @@ Glossário, regras de negócio e fluxos já decididos. O schema de dados está *
 ## Regras de negócio
 
 - **Slug**: 7 caracteres base62, gerados com CSPRNG (ex.: `crypto.getRandomValues`, nativo), o que dá ~3,5 × 10¹² combinações. Tem constraint `UNIQUE` no banco e, se houver colisão, gera outro. Nunca sequencial, para impedir enumeração.
-- **Limite de cliques e expiração**: opcionais. O padrão é sem limite e sem expiração. São funcionalidades de produto (link de uso único, campanha com prazo), **não** proteção. A proteção é o rate limiting.
+- **Validação da URL de destino** (decidida em 2026-09-28). Fica numa função pura do domínio (`UrlValidator`). A análise usa o `new URL()` nativo (WHATWG), e as regras valem **sobre o resultado da análise, não sobre o texto**. A borda só barra entrada vazia ou maior que o limite antes de chamar o domínio.
+  - **R1.** Protocolo só `http:`/`https:`. Rejeita `javascript:`, `data:`, `file:` e outros.
+    - `http:` continua aceito (decidido em 2026-09-28), mas a tela de criação mostra o **aviso** "este destino não usa conexão segura" quando o protocolo final for `http:`. Motivos para não exigir só HTTPS: o ganho contra phishing é nulo (sites de phishing usam HTTPS com certificado grátis); o Chrome 154 (outubro de 2026) já avisa antes de abrir site público em HTTP; e o servidor não acessa o destino, então não pode promover `http` para `https` sem risco de gerar link quebrado.
+  - **R2.** Sem usuário e senha na URL. Rejeita `https://nubank.com.br@evil.com/login`, em que o `hostname` real é `evil.com` e o resto é tratado como usuário (truque de phishing).
+  - **R3.** O destino não pode ser o nosso próprio domínio. Encadear links curtos esconde o destino final e permite loop (A → B → A). O domínio próprio chega por configuração, injetada no construtor.
+  - **R4.** O host tem que ser público. Rejeita `localhost`, loopback, IPs privados, link-local e hosts sem ponto (`http://intranet`). O servidor nunca acessa o destino, então não há SSRF; o risco é o link mandar o navegador da vítima para a rede interna dela, como o painel do roteador (CSRF contra roteadores domésticos).
+  - **R5.** No máximo **2048 caracteres**, medidos na URL normalizada (`url.href`). Cobre URLs reais (UTM, URLs pré-assinadas) e mantém o header `Location` do 302 bem abaixo dos buffers de 4 a 8 KB de proxies comuns. Descartado: 8000, o mínimo que a RFC 9110, §4.1, recomenda suportar, porque um `Location` desse tamanho pode estourar o buffer de um proxy corporativo e virar 502 para o visitante.
+  - **R6.** Entrada sem protocolo recebe `https://` na frente (`exemplo.com/promo` → `https://exemplo.com/promo`), e o resultado passa por todas as regras. `localhost:3000` continua rejeitada, porque o parser lê `localhost:` como protocolo e ela cai na R1.
+  - Fora de escopo (PRD): blocklist de URLs maliciosas e bloqueio de outros encurtadores.
+- **Limite de cliques e expiração**: opcionais. O padrão é sem limite e sem expiração. São funcionalidades de produto (link de uso único, campanha com prazo), **não** proteção. A proteção é o rate limiting. Os dois podem ser combinados. Regras decididas em 2026-09-28 (a borda converte as strings do `FormData` em tipos, e o `LinkService` valida):
+  - **Limite de cliques:** inteiro entre **1 e 1.000.000**, com conversão estrita (`/^\d+$/` antes do `Number()`), então `"10abc"`, `"1e3"`, `"-5"` e `"2.5"` são rejeitados. O teto evita que um valor acima do `int` do Postgres (2.147.483.647) vire erro 500 em vez de erro de validação, e 1 milhão cobre qualquer campanha realista.
+  - **Expiração:** o usuário escolhe uma **duração pronta** (1 h, 24 h, 7 dias ou 30 dias, e o servidor calcula `agora + duração`) **ou "até o fim do dia X"**, com um seletor só de data. Esse dia é interpretado em `America/Sao_Paulo`, o mesmo conceito de "dia" do dashboard: "fim do dia 30/10" vira `2026-10-30T23:59:59.999-03:00`.
+    - A conversão não usa biblioteca: o offset vem do `Intl.DateTimeFormat` com `timeZone: 'America/Sao_Paulo'` e `timeZoneName: 'longOffset'`, que respeita a base IANA (devolve `GMT-02:00` para dezembro de 2018, ainda com horário de verão). O Node 24 não tem a API `Temporal`.
+    - Mínimo: a data tem que ser hoje ou depois, no horário de Brasília. Máximo: **5 anos**, só como trava de sanidade (o máximo de um `Date` em JS é o ano 275760). Um limite de produto não faria sentido, porque o link sem expiração é permitido.
+    - Descartados: data e hora livres com `datetime-local`, porque o valor chega sem fuso (`"2026-10-30T23:59"`) e o criador e o servidor podem estar em fusos diferentes; e só durações prontas, que não cobrem "campanha até o dia 30".
 - **Respostas do redirect**:
   - `302 Found` + `Cache-Control: no-store` quando o link está ativo;
   - `404 Not Found` quando o slug não existe;
@@ -34,6 +48,19 @@ Glossário, regras de negócio e fluxos já decididos. O schema de dados está *
   Se zero linhas forem afetadas, o link não existe ou está inativo. É preciso distinguir os dois casos para responder 404 ou 410.
 - **Registro detalhado do clique** (dispositivo, referrer): fica fora do caminho crítico do redirect, gravado depois que a resposta sai. O mecanismo ainda precisa ser confirmado na documentação do Next.js. Em serverless, "fire and forget" pode ser interrompido quando a função termina, então é preciso usar a API própria do framework para trabalho pós-resposta.
 - **Token de gestão**: exibido só na resposta de criação. Se o usuário perder o link de gestão, não há recuperação (não existe conta).
+  - **Formato:** 32 bytes de `crypto.getRandomValues` em **base64url sem padding** (RFC 4648, §5), com 43 caracteres seguros para URL.
+  - **Exibição única (decidida em 2026-09-28):** a Server Action devolve o resultado como estado (`useActionState`), e um **card na própria tela de criação** mostra o link curto, o link de gestão, o QR, os botões "copiar" e "baixar" e o aviso "guarde este link: não há recuperação". Um F5 descarta o estado, o que é o comportamento certo para um segredo exibido uma vez. Nada do token vai para `localStorage`, cookie ou log. Descartado: redirecionar para `/manage/[token]` logo após criar, porque isso gravaria o token no histórico do navegador na hora (ver `security.md`, "Pendente de mitigação").
+- **Contrato da `createLink`:** Server Action não tem status HTTP de erro (é sempre `POST 200`). O resultado é um tipo discriminado:
+
+  ```ts
+  type CreateLinkState =
+    | { status: 'idle' }
+    | { status: 'success'; shortUrl: string; manageUrl: string; qrCodeDataUrl: string; isInsecureDestination: boolean }
+    | { status: 'error'; fieldErrors?: Partial<Record<'url' | 'maxClicks' | 'expiration', string>>; message?: string }
+  ```
+
+  `shortUrl` e `manageUrl` são absolutos (`https://<domínio>/...`). `isInsecureDestination` alimenta o aviso de destino `http:` (R1). O mapeamento completo de erros fica para a etapa de tratamento de erros.
+- **QR code:** PNG em data URL, com **512 px** (`qrcode.toDataURL`), exibido num `<img>` com botão "baixar". PNG funciona em qualquer lugar (WhatsApp, Word, gráfica). SVG foi descartado porque a exibição inline exigiria `dangerouslySetInnerHTML`. ⚠️ O `qrcode@1.5.4` (último release em 08/2024) traz `yargs@15`, usado só pela CLI dele: reavaliar o peso das dependências transitivas na spec.
 
 ## Bots de preview de link (decidido)
 
@@ -51,7 +78,7 @@ Quando um link curto é colado no WhatsApp, Slack, Telegram, X, Facebook, Linked
 
 ## Fluxos
 
-1. **Criar link**: formulário → Server Action → rate limit → validação da URL → gera slug e token → grava via Prisma → o domínio devolve o link curto e o token → a Server Action gera o QR code (camada de entrada) → devolve o link curto, o link de gestão e o QR.
+1. **Criar link**: formulário → Server Action → rate limit → validação da URL → gera slug e token → grava via Prisma → o domínio devolve o link curto e o token → a Server Action gera o QR code (camada de entrada) → devolve o estado `success` com o link curto, o link de gestão e o QR, exibidos uma única vez no card de resultado.
 2. **Redirecionar** (caminho mais quente, com leituras ~100× mais frequentes que escritas): `GET /[slug]` → rate limit → operação atômica no banco → `302`, `404` ou `410` → registra o evento de clique fora do caminho crítico.
 3. **Gerenciar**: `GET /manage/[token]` → busca o link pelo token (nunca pelo slug) → agrega os cliques no Postgres (`COUNT`/`GROUP BY` por dispositivo, referrer e dia) → dashboard renderizado no servidor → desativação via Server Action.
 

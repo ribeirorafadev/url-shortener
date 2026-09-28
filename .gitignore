@@ -1,22 +1,49 @@
+# Dependências
 node_modules/
-dist/
-.claude/settings.local.json
-CLAUDE.local.md
 
-# Next.js / Vercel / TypeScript
+# Build do Next.js / Vercel / TypeScript
 .next/
 out/
+build/
+dist/
 .vercel
 *.tsbuildinfo
 next-env.d.ts
-coverage/
 
 # Client do Prisma 7, gerado no build (prisma generate)
 src/data/generated/
 
+# Testes e relatórios (screenshots e traces podem conter URLs de gestão com token)
+coverage/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+.playwright-mcp/
+
+# Caches e logs
+.eslintcache
+*.log
+npm-debug.log*
+
 # Segredos: ignora qualquer .env (inclui .env.development.local, .env.production etc.).
 # Só o exemplo sem valores reais vai pro repositório.
+# O .npmrc do projeto É versionado (save-exact, min-release-age etc.) e nunca pode
+# conter token de registry: credenciais do npm ficam só no ~/.npmrc do usuário.
 .env*
 !.env.example
 *.pem
 *.key
+*.p12
+*.pfx
+
+# Sistema operacional e editores
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Claude Code (configurações locais do agente)
+.claude/settings.local.json
+CLAUDE.local.md

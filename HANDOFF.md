@@ -164,6 +164,7 @@ Está no localStorage do Chrome do Rafael (excalidraw.com). **Ainda não foi exp
 Na ordem do processo arquitetural do `superpowers:brainstorming`:
 
 1. **Rotas e contratos** (próximo passo). Para cada um, definir entrada, saída, códigos HTTP e validação:
+   - ✅ **6a (2026-09-28): regras R1 a R6 da URL de destino**, registradas em `domain.md`, com aviso na criação para destino `http:`. ✅ **6b: limite de 1 a 1.000.000 e expiração por duração pronta ou fim do dia (America/Sao_Paulo), máximo de 5 anos.** Segue pendente a 6c (resposta e exibição do token);
    - Server Action `createLink`: campos (URL, `max_clicks`, `expires_at`), limites (tamanho máximo da URL, faixa de `max_clicks`, data mínima e máxima de expiração) e resposta (link curto, link de gestão e QR);
    - Route Handler `GET /[slug]`: 302, 404 ou 410, a **página neutra para bots** em links com limite e o registro pós-resposta;
    - Page `/manage/[token]`: agregações e **janela de tempo do gráfico** (últimos N dias ou desde a criação?);
