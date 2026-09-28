@@ -1,0 +1,19 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+# Web — Antigravity IDE usa Prettier com tabSize=2 nesses overrides de linguagem.
+# .mjs/.cjs/.mts/.cts: configs do ecossistema Next.js (next.config.mjs, postcss.config.mjs).
+# .prisma: o `prisma format` usa 2 espaços. .yml: workflows do GitHub Actions.
+[*.{js,jsx,mjs,cjs,ts,tsx,mts,cts,html,css,json,jsonc,prisma,yml,yaml,md}]
+indent_size = 2
+
+# Markdown usa dois espaços no fim da linha como quebra de linha (ex.: cabeçalho das specs).
+[*.md]
+trim_trailing_whitespace = false

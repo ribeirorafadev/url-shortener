@@ -1,0 +1,22 @@
+node_modules/
+dist/
+.claude/settings.local.json
+CLAUDE.local.md
+
+# Next.js / Vercel / TypeScript
+.next/
+out/
+.vercel
+*.tsbuildinfo
+next-env.d.ts
+coverage/
+
+# Client do Prisma 7, gerado no build (prisma generate)
+src/data/generated/
+
+# Segredos: ignora qualquer .env (inclui .env.development.local, .env.production etc.).
+# Só o exemplo sem valores reais vai pro repositório.
+.env*
+!.env.example
+*.pem
+*.key
