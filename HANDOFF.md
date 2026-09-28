@@ -9,6 +9,13 @@
 **Fase atual:** design, seguindo `superpowers:brainstorming` pelo **caminho arquitetural**. **Nenhum código foi escrito, e isso é intencional.** O hard-gate da skill só libera a implementação depois de três passos: spec escrita e aprovada, plano (`superpowers:writing-plans`) aprovado e método de execução escolhido.
 **Próxima etapa:** continuar **rotas e contratos** com a **decisão 7: Route Handler `GET /[slug]`** (302/404/410, página neutra para bots, registro pós-resposta com `after()`). A pauta de "Ainda em aberto" e a `createLink` (decisões 6a a 6c) já estão fechadas. Ver Next Steps.
 
+### Como retomar (primeiros passos da nova sessão)
+1. `git status -sb` deve mostrar `main...origin/main` sem pendências. Se houver algo, pergunte ao Rafael antes de mexer.
+2. Invoque `superpowers:brainstorming`: a sessão continua no **caminho arquitetural**, na etapa "apresentar o design em seções". Nada de código antes da spec e do plano aprovados.
+3. Antes de propor a decisão 7, **verifique via context7** a API de pós-resposta do Next 16 (`after()` de `next/server`: funciona em Route Handler? Qual o limite de duração na Vercel?) e a proteção CSRF embutida das Server Actions (checagem de `Origin`). As duas são premissas do redirect e da `deactivateLink`.
+4. Apresente a decisão 7 no formato combinado: uma decisão por mensagem, tabela A/B/C, fonte primária, recomendação e exemplo concreto. Registre no arquivo certo assim que o Rafael fechar.
+5. Depois da 7, siga a ordem dos Next Steps: `/manage/[token]` (janela do gráfico e mitigação dos vazamentos do token) → `deactivateLink` → D1 (driver adapter) → tratamento de erros → testes → spec.
+
 ---
 
 ## Goal
