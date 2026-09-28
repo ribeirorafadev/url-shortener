@@ -4,7 +4,7 @@
 **Sessões anteriores:**
 - 2026-09-23/24: brainstorming inicial (stack, arquitetura, AD-001 a AD-004).
 - 2026-09-24 a 27: ajuste do system design, modelo de dados e decisões de segurança e produto.
-- 2026-09-28: baseline de versões, impacto do Prisma 7, `SERIAL` nas PKs e atualização do Excalidraw (seção 2b). Esta sessão.
+- 2026-09-28: baseline de versões, Prisma 7, `SERIAL` nas PKs, npm endurecido, kebab-case, pt-BR, padrão de commit, contrato completo da `createLink` (6a a 6c), Excalidraw atualizado, `git init` e push para o GitHub (seção 2b). Última sessão.
 
 **Fase atual:** design, seguindo `superpowers:brainstorming` pelo **caminho arquitetural**. **Nenhum código foi escrito, e isso é intencional.** O hard-gate da skill só libera a implementação depois de três passos: spec escrita e aprovada, plano (`superpowers:writing-plans`) aprovado e método de execução escolhido.
 **Próxima etapa:** continuar **rotas e contratos** com a **decisão 7: Route Handler `GET /[slug]`** (302/404/410, página neutra para bots, registro pós-resposta com `after()`). A pauta de "Ainda em aberto" e a `createLink` (decisões 6a a 6c) já estão fechadas. Ver Next Steps.
@@ -21,12 +21,13 @@ O escopo do MVP, o que ficou fora de escopo e o critério de "pronto" estão em 
 
 | Arquivo | Conteúdo |
 |---|---|
-| `docs/superpowers/PRD.md` | Problema, público, escopo do MVP, **fora de escopo** (inclui alias e edição de destino, com os motivos) e critério de "pronto" |
+| `docs/superpowers/PRD.md` | Problema, público, escopo do MVP (inclui **idioma pt-BR**), **fora de escopo** (inclui alias, edição de destino e i18n, com os motivos) e critério de "pronto" |
 | `docs/superpowers/ADR.md` | AD-001 a AD-004. É append-only: **nunca editar** |
-| `.agents/rules/architecture.md` | Stack, **baseline de versões**, driver adapter e conexões pooled/direct do Neon, camadas, pastas (client Prisma gerado em `src/data/generated/prisma/`) e decisões não negociáveis. O QR code já está na camada de entrada |
-| `.agents/rules/code-style.md` | Formatação e nomenclatura. Tem a restrição do TS 6 pelo `typescript-eslint` e a candidata `no-restricted-imports` para o AD-004 |
-| `.agents/rules/security.md` | Ameaças, política, **decidido** (hash do token, IP não persistido), **pendente de mitigação** (vazamentos do token) e em aberto (fail-open/closed) |
-| `.agents/context/domain.md` | Glossário, regras de negócio, **bots de preview (decidido)**, fluxos e **modelo de dados completo** (seção final) |
+| `.agents/rules/architecture.md` | Stack, **baseline de versões**, **npm endurecido** (e por que não pnpm/bun), driver adapter e conexões pooled/direct do Neon, camadas, pastas (client Prisma gerado em `src/data/generated/prisma/`) e decisões não negociáveis. O QR code fica na camada de entrada |
+| `.agents/rules/code-style.md` | Lint (restrição do TS 6, `import/no-extraneous-dependencies`, candidata `no-restricted-imports`), **arquivos em kebab-case**, **padrão de commit** e branches |
+| `.agents/rules/security.md` | Ameaças (phishing com R1 a R6), política (segredos, **`.npmrc` sem token**, artefatos de teste ignorados), **decidido** (hash e formato do token, IP não persistido), **pendente de mitigação** (vazamentos do token) e em aberto (fail-open/closed) |
+| `.agents/context/domain.md` | Glossário, regras de negócio (**validação R1 a R6**, **limite e expiração**, **token e contrato da `createLink`**, QR), **bots de preview**, fluxos e **modelo de dados completo** |
+| `.gitignore` | Por seções; ignora `.env*` (exceto `.env.example`), chaves e certificados, o client gerado do Prisma e os artefatos de teste (`.playwright-mcp/`, `test-results/`) |
 | Excalidraw (navegador do Rafael) | Documentação visual (ver seção 3) |
 
 ## Current Progress
@@ -78,7 +79,7 @@ O escopo do MVP, o que ficou fora de escopo e o critério de "pronto" estão em 
 - **Redirect:** `updateManyAndReturn` (Prisma ≥ 6.2.0) faz o UPDATE atômico com RETURNING. Se vier vazio, um `findUnique({ slug })` decide entre 404 e 410.
 
 **Pendências e limitações documentadas** (não esquecer na spec):
-- **Vazamentos do token que o hash não cobre** (`security.md`, "Pendente de mitigação"): logs de requisição da Vercel (o path contém o token), histórico do navegador e header `Referer`. Candidato de mitigação: `Referrer-Policy: no-referrer`. **Mitigar na etapa de rotas.**
+- **Vazamentos do token que o hash não cobre** (`security.md`, "Pendente de mitigação"): logs de requisição da Vercel (o path contém o token), histórico do navegador e header `Referer`. Candidato de mitigação: `Referrer-Policy: no-referrer`. O histórico já foi mitigado em parte pela 6c (sem redirect para `/manage` na criação). **Mitigar o resto na etapa de rotas (página `/manage/[token]`).**
 - **Scanners de e-mail** (Defender Safe Links, Proofpoint, Mimecast) consomem links com limite, porque usam UA de navegador comum. A raiz está na RFC 9110, §9.2.1 (GET seguro). A página de confirmação fica como evolução.
 - `click_count` e os totais de `click_events` podem divergir um pouco, porque o evento é gravado depois da resposta.
 
@@ -104,7 +105,19 @@ O escopo do MVP, o que ficou fora de escopo e o critério de "pronto" estão em 
 
 **PKs `SERIAL`/`BIGSERIAL` em vez de `IDENTITY`** (registrado em `domain.md`). O Prisma gera `SERIAL` com `autoincrement()`, e a documentação dizia `identity`. O Rafael aceitou o `SERIAL`: só o repositório insere, sempre sem id, e manter o `IDENTITY` exigiria editar toda migration à mão.
 
-**Outros arquivos atualizados:** `CLAUDE.md` (stack com versões), `code-style.md` e `.gitignore`. ADR e PRD não mudaram: nenhuma dessas decisões passa nos três critérios de ADR.
+**Demais decisões de 2026-09-28** (uma por mensagem, com trade-offs):
+
+| # | Decisão | Escolha | Registrada em |
+|---|---|---|---|
+| 2 | Gerenciador de pacotes | **npm 11 endurecido:** `.npmrc` com `save-exact`, `min-release-age=1` e `strict-allow-scripts=true`; `allowScripts` (prisma, @prisma/engines, esbuild, unrs-resolver); dependência fantasma barrada por `import/no-extraneous-dependencies`. O pnpm 11 foi descartado porque a Vercel só documenta até o pnpm 10 | `architecture.md`, `code-style.md` |
+| 3 | Nome de arquivo | **kebab-case em tudo** (padrão do shadcn e do Next; elimina bugs de caixa entre Mac/Windows e o Linux da Vercel) | `code-style.md` |
+| 4 | Idioma | **pt-BR** na UI e no README (alvo: vagas no Brasil). i18n fora de escopo: `[lang]` colide com `[slug]` na raiz | `PRD.md` |
+| 5 | Commits | **Conventional Commits**, tipo e escopo em inglês, descrição em pt-BR, sem validação automática, **trailer do Claude mantido**; `main` "deployável" e uma branch por spec | `code-style.md` |
+| 6a | URL de destino | **R1** http/https (com **aviso** para `http:`), **R2** sem credenciais na URL, **R3** não pode ser o próprio domínio, **R4** host público, **R5** no máximo 2048 caracteres, **R6** prefixa `https://` quando falta protocolo | `domain.md`, `security.md` |
+| 6b | Limite e expiração | Limite de 1 a 1.000.000 (conversão estrita); expiração por duração (1 h, 24 h, 7 dias, 30 dias) ou fim do dia em `America/Sao_Paulo` via `Intl` (sem `Temporal` no Node 24), com máximo de 5 anos | `domain.md` |
+| 6c | Resposta da `createLink` | Token base64url (43 caracteres); estado discriminado `CreateLinkState`; exibição única num card na tela de criação; QR em PNG de 512 px | `domain.md`, `security.md` |
+
+**Outros arquivos atualizados:** `CLAUDE.md` (stack com versões) e `.gitignore` (reorganizado; ver "Repositório"). O ADR não mudou, porque nenhuma dessas decisões passa nos três critérios. O PRD mudou só com o idioma e o i18n.
 
 ### 3. Documentação visual no Excalidraw
 
@@ -120,6 +133,7 @@ Está no localStorage do Chrome do Rafael (excalidraw.com). **Ainda não foi exp
    - bloco **DECISÕES DE DESIGN** com 8 itens.
 3. **MODELO DE DADOS:** diagrama ER com `links` e `click_events` (1:N em crow's foot, `ON DELETE RESTRICT`), `«enum» device_type` (já com `BOT`, seta tracejada rotulada "tipo da coluna device_type") e **NOTAS DO MODELO** com 8 itens (o item 8 já traz a decisão dos bots).
 4. **REGRAS DE NEGÓCIO:** 10 regras em linguagem acessível a leigos, com o rodapé "Versão técnica, com as justificativas: .agents/context/domain.md e docs/superpowers/PRD.md".
+   - *Opcional, ainda não feito:* a regra 6 só fala em "http:// ou https://". As regras R2 a R4 (credenciais na URL, próprio domínio, rede interna), o limite de 1 a 1.000.000 e a expiração por duração ou fim do dia não aparecem. Oferecer ao Rafael quando o Excalidraw for editado de novo, por exemplo junto da seção RF/RNF.
 
 **Combinado com o Rafael:**
 - O Excalidraw é o **resumo visual**, e a fonte da verdade são os arquivos Markdown.
@@ -207,9 +221,10 @@ A ordem combinada com o Rafael é **uma decisão por mensagem**. A pauta é: ~~1
   - ~~convenção de nome de arquivo~~: ✅ kebab-case em tudo (`code-style.md`);
   - ~~padrão de commit~~: ✅ ver `code-style.md`.
 - ~~**Produto:** idioma da interface~~: ✅ pt-BR na UI e no README. O alvo atual são vagas no Brasil; i18n ficou fora de escopo, com o motivo no PRD.
-- **Repositório:** ✅ público em **https://github.com/ribeirorafadev/url-shortener** (remoto `origin` via SSH, `git@github.com:ribeirorafadev/url-shortener.git`; o SSH da máquina já está autenticado como `ribeirorafadev`). `main` foi enviada em 2026-09-28 com dois commits de documentação (`fe90139`, `f482fb3`). A spec será commitada na branch dela (ex.: `feat/mvp`).
+- **Repositório:** ✅ público em **https://github.com/ribeirorafadev/url-shortener** (remoto `origin` via SSH, `git@github.com:ribeirorafadev/url-shortener.git`; o SSH da máquina já está autenticado como `ribeirorafadev`). `main` está sincronizada com `origin/main` desde 2026-09-28, só com commits de documentação. Confira o último com `git log --oneline -3`. A spec será commitada na branch dela (ex.: `feat/mvp`).
   - **Push:** só com autorização explícita do Rafael na mensagem.
-  - **Descrição do "About"** no GitHub: o MCP do GitHub não edita metadados de repositório e o `gh` não está instalado, então o Rafael configura manualmente (texto sugerido na conversa de 2026-09-28).
+  - **"About" do GitHub:** ✅ configurado pelo Rafael (descrição e topics). O MCP do GitHub não edita metadados de repositório, e o `gh` e a CLI `vercel` não estão instalados.
+  - **README:** ainda não existe. O completo é entrega do PRD, no fim. Um README curto provisório foi oferecido e fica a critério do Rafael.
   - **Repositório público:** tudo o que é commitado fica visível, inclusive este HANDOFF. A varredura de 2026-09-28 não encontrou segredos nem dados pessoais. O `.gitignore` foi reorganizado por seções, e a política do `.npmrc` sem token e dos artefatos de teste ignorados está em `security.md`.
 
 ## Preferências do Rafael relevantes para a sessão
@@ -217,6 +232,8 @@ A ordem combinada com o Rafael é **uma decisão por mensagem**. A pauta é: ~~1
 - Português (pt-BR), direto e sem floreio. Markdown estruturado e **negrito** em termos críticos.
 - Decisão não trivial precisa citar fonte real (doc oficial, RFC, lei, OWASP).
 - Quer **entender os trade-offs antes de decidir**. Nunca apresente uma decisão como fato consumado.
+- Explicações **objetivas, com exemplo concreto** (erro real, trecho de código, analogia com Java/Spring). Quando algo não fica claro, ele pede para reexplicar antes de avançar: explique, depois siga.
+- Ao fechar um bloco de decisões, costuma pedir **varredura dos arquivos afetados + atualização do HANDOFF**. Faça a varredura com `grep` pelos termos da decisão, não de memória.
 - Tem base em Java/Spring e em segurança, e está aprendendo Next.js, ORM e serverless agora.
 - Antes de ação destrutiva: primeiro um relatório (o quê, onde, risco), depois a autorização explícita.
 - Pode acionar o Antigravity CLI (`agy -p "..."`) para pesquisa web ou revisão.
