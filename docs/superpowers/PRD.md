@@ -42,7 +42,7 @@ O produto precisa funcionar de verdade, com deploy público: um encurtador de UR
   - mantém baixo o impacto de um token vazado (ver e desativar, nunca sequestrar o link);
   - mantém o analytics coerente.
   
-  A evolução documentada é o destino **editável só até o primeiro clique** (`UPDATE ... WHERE click_count = 0`, atômico), que serve para corrigir erro de digitação antes de compartilhar sem abrir bait-and-switch. Ela não resolve QR code impresso (quem imprime testa escaneando, e o primeiro clique trava o destino). Os bots de preview também podem travar o link. Edição livre fica descartada enquanto os vazamentos do token (ver `.agents/rules/security.md`) não estiverem mitigados, e exigiria histórico de destinos.
+  A evolução documentada é o destino **editável só até o primeiro clique** (`UPDATE ... WHERE click_count = 0`, atômico), que serve para corrigir erro de digitação antes de compartilhar sem abrir bait-and-switch. Ela não resolve QR code impresso (quem imprime testa escaneando, e o primeiro clique trava o destino). Os bots de preview também podem travar o link. Edição livre fica descartada enquanto o token tiver vazamentos residuais aceitos (logs da Vercel e histórico do navegador; ver `.agents/rules/security.md`, "Vazamentos do token"), e exigiria histórico de destinos.
 
 ## Critério de "pronto"
 

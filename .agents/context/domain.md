@@ -29,10 +29,17 @@ Glossário, regras de negócio e fluxos já decididos. O schema de dados está *
     - A conversão não usa biblioteca: o offset vem do `Intl.DateTimeFormat` com `timeZone: 'America/Sao_Paulo'` e `timeZoneName: 'longOffset'`, que respeita a base IANA (devolve `GMT-02:00` para dezembro de 2018, ainda com horário de verão). O Node 24 não tem a API `Temporal`.
     - Mínimo: a data tem que ser hoje ou depois, no horário de Brasília. Máximo: **5 anos**, só como trava de sanidade (o máximo de um `Date` em JS é o ano 275760). Um limite de produto não faria sentido, porque o link sem expiração é permitido.
     - Descartados: data e hora livres com `datetime-local`, porque o valor chega sem fuso (`"2026-10-30T23:59"`) e o criador e o servidor podem estar em fusos diferentes; e só durações prontas, que não cobrem "campanha até o dia 30".
+- **Pré-validação do formato do slug (decidida em 2026-09-29):** a primeira coisa que o `GET`/`HEAD /[slug]` faz é chamar `isValidSlugFormat(slug)`, uma função pura do domínio que testa `^[A-Za-z0-9]{7}$`. É a mesma regra de alfabeto e tamanho do `SlugGenerator`, definida num lugar só. Fora do formato → `404` imediato, **antes do rate limit e do banco**. Pedido malformado (`/wp-login.php`, `/.env`, `/admin`) nunca vira link, então não gasta a cota do Upstash nem uma consulta. Descartados: rate limit antes do formato (gasta a cota com lixo) e sem checagem (gasta a cota e uma consulta ao banco).
 - **Respostas do redirect**:
   - `302 Found` + `Cache-Control: no-store` quando o link está ativo;
   - `404 Not Found` quando o slug não existe;
   - `410 Gone` quando o link existe mas expirou, esgotou o limite ou foi desativado.
+  - **Corpo das respostas sem redirect (decidido em 2026-09-29):** o `404`, o `410` e a página neutra dos bots (`200`) levam um **HTML mínimo em pt-BR gerado no próprio Route Handler**: título, uma frase, CSS inline e um link "criar um novo link". Um único módulo de templates, na camada de entrada, gera as três páginas.
+    - O **texto é fixo**, e nenhum dado do link (slug, destino) é interpolado no HTML, o que elimina XSS por construção.
+    - Headers: `Content-Type: text/html; charset=utf-8` e `Cache-Control: no-store`.
+    - **O `410` mostra o motivo, com um texto fixo por caso** (decidido em 2026-09-29): "Este link foi desativado por quem o criou.", "Este link expirou." ou "Este link atingiu o limite de acessos.". Sem data nem número de acessos, para manter "nada do link no HTML". Se mais de um motivo valer, a precedência é **desativado → expirado → esgotado**, porque a ação explícita do criador vem primeiro. O domínio devolve o motivo como tipo discriminado (ex.: `'deactivated' | 'expired' | 'exhausted'`). Descartados: mensagem genérica (a pessoa que clicou não sabe o que fazer) e motivo com detalhes (expõe escolhas do criador sem ganho).
+    - Motivo: o redirect é um `route.ts`, que devolve uma `Response` crua, e uma página React não consegue responder `410`.
+    - Descartados: texto puro (parece app quebrado para quem avalia o portfólio) e redirect para uma página React (`302 → 200`), que deixaria de responder `410`/`404` de verdade e violaria o critério de "pronto" do PRD.
 - **Por que 302 e não 301**: o 301 é cacheado pelo navegador. A partir do segundo clique, o navegador vai direto ao destino sem passar pelo servidor, e o sistema perde o analytics e o controle de expiração e desativação.
 - **Incremento atômico**: a checagem de limite e de expiração e o incremento do contador acontecem numa única operação no banco. Com a checagem separada do incremento, dois cliques simultâneos com o contador em 99 (limite 100) passariam os dois. A forma de referência é esta (a implementação exata via Prisma fica para a spec):
 
@@ -46,10 +53,13 @@ Glossário, regras de negócio e fluxos já decididos. O schema de dados está *
   ```
 
   Se zero linhas forem afetadas, o link não existe ou está inativo. É preciso distinguir os dois casos para responder 404 ou 410.
-- **Registro detalhado do clique** (dispositivo, referrer): fica fora do caminho crítico do redirect, gravado depois que a resposta sai. O mecanismo ainda precisa ser confirmado na documentação do Next.js. Em serverless, "fire and forget" pode ser interrompido quando a função termina, então é preciso usar a API própria do framework para trabalho pós-resposta.
+- **Registro detalhado do clique** (dispositivo, referrer): fica fora do caminho crítico do redirect, gravado depois que a resposta sai (decidido em 2026-09-29). O mecanismo é o **`after()` de `next/server`**, que funciona em Route Handler e, na Vercel, usa o `waitUntil` da plataforma para manter a função viva até o fim do callback. Esse prazo é o `maxDuration` da rota: 300 s no Hobby com Fluid compute. Um "fire and forget" comum poderia ser interrompido quando a função termina.
+  - **Os headers são lidos e classificados antes do `after()`** (`ClickTracker`, função pura). O callback recebe só valores prontos (`linkId`, `deviceType`, `referrerHost`) e apenas grava.
+  - **Se a gravação falhar**, o visitante não percebe, porque o 302 já saiu. O Next registra o erro com `console.error`, sem retry. O nosso log leva o slug, **nunca a URL de destino**, que pode conter dado privado. O resultado é a divergência aceita em "Modelo de dados" (`click_count` duplicado).
+  - Descartados: gravar antes de responder, porque uma falha na tabela de eventos viraria erro para o visitante e o analytics derrubaria o link; e UPDATE + INSERT numa única query (CTE), que exige SQL escrito à mão e tem o mesmo problema. Evolução: fila com retry (ex.: QStash), se a perda de eventos passar a importar.
 - **Token de gestão**: exibido só na resposta de criação. Se o usuário perder o link de gestão, não há recuperação (não existe conta).
   - **Formato:** 32 bytes de `crypto.getRandomValues` em **base64url sem padding** (RFC 4648, §5), com 43 caracteres seguros para URL.
-  - **Exibição única (decidida em 2026-09-28):** a Server Action devolve o resultado como estado (`useActionState`), e um **card na própria tela de criação** mostra o link curto, o link de gestão, o QR, os botões "copiar" e "baixar" e o aviso "guarde este link: não há recuperação". Um F5 descarta o estado, o que é o comportamento certo para um segredo exibido uma vez. Nada do token vai para `localStorage`, cookie ou log. Descartado: redirecionar para `/manage/[token]` logo após criar, porque isso gravaria o token no histórico do navegador na hora (ver `security.md`, "Pendente de mitigação").
+  - **Exibição única (decidida em 2026-09-28):** a Server Action devolve o resultado como estado (`useActionState`), e um **card na própria tela de criação** mostra o link curto, o link de gestão, o QR, os botões "copiar" e "baixar" e o aviso "guarde este link: não há recuperação". Um F5 descarta o estado, o que é o comportamento certo para um segredo exibido uma vez. Nada do token vai para `localStorage`, cookie ou log. Descartado: redirecionar para `/manage/[token]` logo após criar, porque isso gravaria o token no histórico do navegador na hora (ver `security.md`, "Vazamentos do token").
 - **Contrato da `createLink`:** Server Action não tem status HTTP de erro (é sempre `POST 200`). O resultado é um tipo discriminado:
 
   ```ts
@@ -73,14 +83,25 @@ Quando um link curto é colado no WhatsApp, Slack, Telegram, X, Facebook, Linked
 - **Registro:** o acesso de bot vira evento com `device_type = BOT`, sem coluna nova. O dashboard mostra "pré-visualizado N× por bots" à parte e **exclui `BOT` dos totais**. O `click_count` nunca é incrementado por bot.
 - **Detecção:** lista própria no domínio (`isPreviewBot(userAgent)`, função pura com regex, testada com UAs reais), cobrindo `WhatsApp/`, `Slackbot`, `facebookexternalhit`, `Twitterbot`, `TelegramBot`, `LinkedInBot` e `Discordbot`. Os padrões vêm da documentação de cada plataforma. A lib `isbot` foi descartada por ser dependência nova para um problema que cerca de 8 padrões resolvem.
 - **Limitação documentada:** scanners de segurança de e-mail (Defender Safe Links, Proofpoint, Mimecast) abrem links com UA de navegador comum e continuam consumindo links limitados. A raiz está na RFC 9110, §9.2.1: `GET` é método seguro, e consumir um link num GET é mudança de estado.
+- **Requisições `HEAD` (decidido em 2026-09-29):** recebem o mesmo tratamento de um bot de preview. Um handler `HEAD` próprio só lê o link: sem limite → `302` com `Location`; com limite → `200` sem revelar o destino; inexistente → `404`; inativo → `410`. **Não incrementa `click_count` nem gera evento.** O handler próprio é obrigatório porque, sem ele, o Next 16 responde o `HEAD` executando o `GET` (`auto-implement-methods.ts`), e um verificador de links gastaria um link de uso único. Base: RFC 9110, §9.2.1 (`HEAD` é seguro) e §9.1 (servidor de uso geral deve suportar `GET` e `HEAD`). Descartados: o padrão do Next (consome o link) e o `405` (verificadores de link passariam a acusar o link como quebrado).
 
 **Evolução documentada:** uma página de confirmação para links com limite. O `GET` mostra um botão, e só o `POST` (Server Action) consome o link e redireciona. Resolve também os scanners de e-mail e respeita a semântica de "GET seguro". O custo é um clique a mais para o humano.
 
 ## Fluxos
 
 1. **Criar link**: formulário → Server Action → rate limit → validação da URL → gera slug e token → grava via Prisma → o domínio devolve o link curto e o token → a Server Action gera o QR code (camada de entrada) → devolve o estado `success` com o link curto, o link de gestão e o QR, exibidos uma única vez no card de resultado.
-2. **Redirecionar** (caminho mais quente, com leituras ~100× mais frequentes que escritas): `GET /[slug]` → rate limit → operação atômica no banco → `302`, `404` ou `410` → registra o evento de clique fora do caminho crítico.
-3. **Gerenciar**: `GET /manage/[token]` → busca o link pelo token (nunca pelo slug) → agrega os cliques no Postgres (`COUNT`/`GROUP BY` por dispositivo, referrer e dia) → dashboard renderizado no servidor → desativação via Server Action.
+2. **Redirecionar** (caminho mais quente, com leituras ~100× mais frequentes que escritas). Route Handler `src/app/[slug]/route.ts`, que exporta `GET` e `HEAD`:
+   ```
+   1. isValidSlugFormat(slug) falhou → 404 (sem Upstash nem banco)
+   2. rate limit por IP
+   3. HEAD ou isPreviewBot(UA)?
+      ├─ sim → só lê (findUnique): 404 | 410 com motivo | com limite → 200 página neutra | sem limite → 302 sem incrementar
+      └─ não → updateManyAndReturn (atômico)
+               ├─ 1 linha → 302 + Cache-Control: no-store
+               └─ vazio  → findUnique: 404 ou 410 com motivo
+   4. after(): grava o evento de clique (BOT para bot de preview; nada para HEAD)
+   ```
+3. **Gerenciar**: `GET /manage/[token]` → busca o link pelo token (nunca pelo slug) → agrega os cliques no Postgres (totais de toda a vida por dispositivo e referrer; gráfico diário dos últimos 30 dias) → dashboard renderizado no servidor, com `Referrer-Policy: no-referrer`, `X-Robots-Tag: noindex` e `Cache-Control: no-store` → desativação via Server Action.
 
 ## Modelo de dados (em design; consolidar na spec)
 
@@ -112,4 +133,9 @@ Decidido:
   
   **Evolução documentada:** usar o fuso do navegador de quem vê (`Intl`), enviado por cookie e validado por whitelist com `Intl.supportedValuesOf('timeZone')`. Muda só a query e a entrada, não o schema.
 
-Modelo de dados fechado. Janela de tempo do gráfico: decidir na etapa de rotas.
+Modelo de dados fechado.
+
+## Página de gestão (`/manage/[token]`)
+
+- **Janela do gráfico diário (decidida em 2026-09-29): últimos 30 dias, ou desde a criação se o link for mais novo.** O gráfico fica sempre legível (no máximo 30 barras), e a consulta tem custo fixo, coberta pelo índice `(link_id, clicked_at)`. Os **totais** (cliques, por dispositivo e por referrer) cobrem **toda a vida do link**; só o gráfico tem janela. Descartados: desde a criação (centenas de barras em links antigos e uma consulta que cresce com a idade) e seletor de 7/30/90 dias, que fica como **evolução** (acrescentar depois não muda o banco; exige whitelist no `?dias=`).
+- **Token no path e headers da página (decidido em 2026-09-29):** o token continua em `/manage/[token]`. A resposta leva `Referrer-Policy: no-referrer`, `X-Robots-Tag: noindex` e `Cache-Control: no-store`. O tratamento de cada canal de vazamento (Referer, logs da Vercel, histórico) e as alternativas descartadas estão em `security.md`, "Vazamentos do token".

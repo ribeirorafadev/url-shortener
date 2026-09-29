@@ -1,7 +1,7 @@
 # Segurança — short-url
 
 ## Superfície de risco
-- Autenticação/autorização: sem login (AD-003). A autorização sobre um link é a posse do **token de gestão**: longo, aleatório (CSPRNG) e exibido uma única vez. O token é uma credencial: nunca aparece em URL pública, log, analytics ou resposta de redirect.
+- Autenticação/autorização: sem login (AD-003). A autorização sobre um link é a posse do **token de gestão**: longo, aleatório (CSPRNG) e exibido uma única vez. O token é uma credencial: nunca aparece em URL pública, log, analytics ou resposta de redirect. **Exceção documentada:** os logs de requisição da própria Vercel registram o path `/manage/<token>` (ver "Vazamentos do token"). O código da aplicação continua proibido de logar o token.
 - Dados sensíveis manipulados:
   - o token de gestão;
   - as URLs de destino, que podem carregar dados privados em query string;
@@ -16,6 +16,9 @@
 - **Enumeração de links**: slug aleatório via CSPRNG, nunca sequencial.
 - **SQL injection**: acesso só via Prisma, sem concatenação.
 - **Race condition no limite de cliques**: checagem e incremento numa única operação atômica.
+- **Consumo de link com limite por quem não é o destinatário**: bots de preview e requisições `HEAD` só leem o link, sem incrementar, e nunca veem o destino de um link com limite (`domain.md`, "Bots de preview" e "Requisições `HEAD`"). Scanners de e-mail com UA de navegador continuam sendo uma limitação documentada.
+- **Varredura de caminhos** (`/wp-login.php`, `/.env`): o slug fora do formato recebe `404` antes do rate limit e do banco (`domain.md`, "Pré-validação do formato do slug").
+- **CSRF nas Server Actions** (`createLink`, `deactivateLink`): proteção embutida do Next.js, verificada na documentação da v16 (`data-security.mdx`, `action-handler.ts`). Server Actions só aceitam `POST`, e o Next compara o header `Origin` com o `Host`/`X-Forwarded-Host`, abortando a action se forem diferentes. Sem `serverActions.allowedOrigins`, só a mesma origem é aceita. **Não configurar `allowedOrigins`.**
 
 ## Política
 - Todo input externo é hostil até prova em contrário. O formato é validado na borda (entrada), e as regras de negócio são revalidadas no domínio.
@@ -31,11 +34,14 @@
   - O Marco Civil (Lei 12.965/2014, art. 15), que obriga a guardar registros de acesso por 6 meses, só vale para pessoa jurídica com fins econômicos. Não se aplica a projeto pessoal; reavaliar se o produto virar empresa.
   - Hash simples de IP foi descartado porque o IPv4 tem só 2³² valores, então é reversível por força bruta. Se um dia for preciso contar visitantes únicos, o caminho é `hash(salt_diário + IP + user-agent)` com o salt apagado a cada 24 h, como faz o Plausible. É mudança barata: coluna nova, só para os cliques daí em diante.
 
-## Pendente de mitigação: vazamentos do token que o hash não cobre
-O hash só protege o token **no banco**. Como o token vai no path (`/manage/[token]`), ele vaza por outros canais. Mitigar na etapa de rotas ou na spec:
-- **Logs de requisição da Vercel**: registram o path completo, com o token.
-- **Histórico do navegador**: a URL de gestão fica salva no histórico e na sincronização do navegador. *Mitigado em parte (2026-09-28):* a criação exibe o token num card na própria tela, sem redirecionar para `/manage/[token]`, então ele só entra no histórico quando o usuário abre o link de gestão. O resto do canal continua pendente.
-- **Header `Referer`**: se a página de gestão tiver links ou recursos externos, a URL com o token pode ir no `Referer`. Candidato: `Referrer-Policy: no-referrer` na página de gestão.
+## Vazamentos do token que o hash não cobre (decidido em 2026-09-29)
+O hash só protege o token **no banco**. O token **continua no path** (`/manage/[token]`), e cada canal de vazamento tem um tratamento explícito:
+- **Header `Referer`: mitigado.** A página de gestão responde com `Referrer-Policy: no-referrer`, e o navegador nunca envia a URL com o token a outro site. Ela também leva `X-Robots-Tag: noindex` (para não ser indexada se o link vazar) e `Cache-Control: no-store`.
+- **Logs de requisição da Vercel: risco aceito.** O log de runtime mostra o path acessado, com o token. Só o dono do projeto vê esse log, e ele já controla o banco, então o log não dá a ninguém um acesso novo. O plano Hobby guarda os logs por **1 hora** (documentação de Runtime Logs da Vercel, verificada em 2026-09-29).
+- **Histórico do navegador: risco residual aceito.** *Mitigado em parte (2026-09-28):* a criação exibe o token num card, sem redirecionar para `/manage/[token]`, então ele só entra no histórico quando o usuário abre o link de gestão. O que sobra só importa em computador compartilhado.
+- Descartados:
+  - **token no fragmento** (`/manage#<token>`, que o navegador não envia ao servidor, RFC 3986, §3.5): fecharia o log, mas obriga a renderizar o dashboard no navegador (JavaScript lê o `#` e busca os dados por `POST`), e não resolve o histórico;
+  - **campo "cole seu token"** sem token na URL: fecha os três canais, mas o usuário perde o link clicável e precisa guardar 43 caracteres.
 
 ## Em aberto (decidir na spec)
 - Se o Upstash cair ou a cota acabar, o rate limiter falha aberto (deixa passar) ou fechado (bloqueia)? Possivelmente diferente para criação e redirect. Isso entra na seção de tratamento de erros.
