@@ -14,6 +14,12 @@
 4. Apresente **uma decisão por mensagem** no formato de "Como apresentar decisões". Ao fechar, registre **na hora** no arquivo-fonte e marque aqui.
 5. **Commite e dê push ao fim de cada bloco de decisões**, com autorização do Rafael na mensagem. Um Ctrl+Z no editor já apagou trabalho não commitado.
 
+## Prazo (decidido em 2026-09-30)
+
+- A semana de trabalho **começa quando a spec e o plano forem aprovados**. O design não conta.
+- O Rafael dedica **no máximo 4 a 5 horas por dia**.
+- **Nenhum corte de escopo:** todas as decisões foram pensadas para um MVP justo, honesto e bem documentado. Se o prazo apertar, o plano é ordenado em fatias que funcionam de ponta a ponta, para sempre haver uma versão no ar.
+
 ## Goal
 
 Encurtador de links com analytics: o primeiro projeto do portfólio full-stack do Rafael, em cerca de 1 semana, em Node.js/TypeScript, para diversificar a stack antes dos projetos em Java/Spring (IAM e CRM; roadmap em `~/Projetos/portfolio-roadmap.txt`). Escopo, fora de escopo e critério de "pronto" estão no PRD.
@@ -59,7 +65,7 @@ Todas debatidas com trade-offs e aprovadas pelo Rafael. **Não reabrir sem motiv
 - Instalar o Docker na máquina do Rafael (hoje não há Docker nem Postgres) e escolher entre `sudo` e o modo *rootless*, porque o grupo `docker` equivale a root.
 - Definir a versão major do Postgres ao criar o projeto no Neon (14 a 18); o `compose.yml` usa a mesma.
 - Ativar o ruleset da `main` e os Deployment Checks junto com o CI, e confirmar com um commit que falha de propósito que o `*.vercel.app` também fica retido.
-- O Rafael nunca trabalhou com PR: a primeira PR da `feat/mvp` vai ser guiada passo a passo.
+- **Primeira PR feita em conjunto (combinado em 2026-09-30):** o Rafael nunca trabalhou com PR. A primeira PR da `feat/mvp` é feita **junto com ele, passo a passo**: abrir pelo site do GitHub (o `gh` não está instalado), ler o diff em "Files changed", acompanhar o CI e, se aparecer ✗, abrir o "Details", reproduzir localmente, corrigir na mesma branch e dar push. O ruleset exige **só o CI verde, sem aprovação**, porque o GitHub não deixa o autor aprovar o próprio PR.
 
 **Para a spec** (`docs/superpowers/specs/2026-XX-XX-short-url-mvp-design.md`, formato de `spec-workflow.md`):
 - Consolidar PRD, `domain.md`, `security.md` e `architecture.md`, com as seções `## Alternativas consideradas…` e `## Requisitos rastreados` (RF/RNF).
@@ -97,7 +103,7 @@ Todas debatidas com trade-offs e aprovadas pelo Rafael. **Não reabrir sem motiv
   - SYSTEM DESIGN com `HEAD`, 429/503, `«interface» UrlThreatChecker`, camada `src/infra` com `SafeBrowsingUrlThreatChecker`, caixa externa do Google Safe Browsing e as decisões de design reescritas (1 a 9);
   - seção nova ENTREGA (CI/CD): push → PR → CI → merge (ruleset) → Vercel (Deployment Checks) → produção.
 - **Pendente:**
-  - conferência visual pelo Rafael (a automação não consegue rolar o canvas);
+  - **conferência visual pelo Rafael no início da sessão de 2026-10-01** (a automação não consegue rolar o canvas). Se algo estiver torto, corrigir antes de seguir;
   - seção RF/RNF só depois da spec aprovada;
   - no fim, o Rafael exporta (`.excalidraw` + SVG) para `docs/`.
 - **Protocolo de edição (via localStorage, claude-in-chrome), só quando o Rafael pedir na própria mensagem:**
