@@ -1,6 +1,6 @@
 # Domínio — short-url
 
-Glossário, regras de negócio e fluxos já decididos. O schema de dados está **em design**: ver "Modelo de dados" no fim do arquivo.
+Glossário, regras de negócio e fluxos já decididos. O schema de dados está **fechado** (a consolidar na spec): ver "Modelo de dados" no fim do arquivo.
 
 ## Glossário
 
@@ -146,7 +146,7 @@ Quando um link curto é colado no WhatsApp, Slack, Telegram, X, Facebook, Linked
    ```
 3. **Gerenciar**: `GET /manage/[token]` → busca o link pelo token (nunca pelo slug) → agrega os cliques no Postgres (totais de toda a vida por dispositivo e referrer; gráfico diário dos últimos 30 dias) → dashboard renderizado no servidor, com o QR code da URL curta (gerado na hora), `Referrer-Policy: no-referrer`, `X-Robots-Tag: noindex` e `Cache-Control: no-store` → desativação via Server Action.
 
-## Modelo de dados (em design; consolidar na spec)
+## Modelo de dados (fechado; consolidar na spec)
 
 Decidido:
 
