@@ -23,6 +23,8 @@
 ## Política
 - Todo input externo é hostil até prova em contrário. O formato é validado na borda (entrada), e as regras de negócio são revalidadas no domínio.
 - Segredos (`DATABASE_URL` e `DIRECT_URL`, as duas connection strings do Neon, os tokens do Upstash e a `SAFE_BROWSING_API_KEY`) só via variáveis de ambiente (Vercel em produção, `.env.local` em dev). Nunca hardcoded nem commitados: o `.gitignore` ignora `.env*`, exceto `.env.example`.
+- **CI sem segredos (decidido em 2026-09-30).** Os testes usam serviços falsos e o Postgres do container, então o GitHub Actions não recebe nenhuma credencial (Neon, Upstash, Google ou Vercel). As ações de terceiros ficam fixadas pelo SHA completo do commit, e o `GITHUB_TOKEN` só tem `contents: read` (GitHub Docs, "Secure use reference"). A senha do Postgres no `compose.yml` é só de desenvolvimento local, com a porta presa ao `127.0.0.1`, e não é segredo.
+- **Publicação protegida (decidido em 2026-09-30):** código só chega à produção com o CI verde. São duas travas: o ruleset da `main` e os Deployment Checks da Vercel (ver `architecture.md`).
 - O **`.npmrc` do projeto é versionado**, porque guarda as regras de supply chain, e por isso **nunca pode conter token de registry** (`//registry.npmjs.org/:_authToken=`). Credenciais do npm ficam só no `~/.npmrc` do usuário.
 - **Artefatos de teste são ignorados** (`test-results/`, `playwright-report/`, `.playwright-mcp/`): screenshots e traces do fluxo de gestão podem conter a URL com o token.
 - Nenhum `catch` silencioso. Erros esperados (URL inválida, link inexistente ou expirado) viram resposta HTTP explícita; os inesperados são logados sem vazar token nem segredo.

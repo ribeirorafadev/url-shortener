@@ -54,6 +54,7 @@ O produto precisa funcionar de verdade, com deploy público: um encurtador de UR
 - O limite de cliques é respeitado sob requisições concorrentes (incremento atômico no banco).
 - Rate limiting ativo na criação e no redirecionamento.
 - URL listada no Google Safe Browsing é recusada na criação, com aviso qualificado ("suspeito") e a atribuição "Advisory provided by Google".
-- Testes automatizados da camada de domínio passando (ferramenta a definir na spec).
-- README com descrição, stack, diagrama de system design, link para o ADR, seção "como escalaria", instruções para rodar localmente, a dica "um link por canal" (UTM no destino, P2) e o **aviso de que a checagem do Google Safe Browsing pode ter falsos positivos e falsos negativos** (exigência dos termos do Google).
+- Testes automatizados da camada de domínio passando (Vitest; ver `architecture.md`), mais o teste de concorrência com Postgres real e os testes HTTP do redirect e da página de gestão.
+- CI (GitHub Actions) verde na `main`, e a publicação na Vercel só acontece depois dele (ruleset + Deployment Checks).
+- README com descrição, stack, diagrama de system design, link para o ADR, seção "como escalaria", instruções para rodar localmente e para rodar os testes (Node + Docker, sem conta em nenhum serviço), a dica "um link por canal" (UTM no destino, P2) e o **aviso de que a checagem do Google Safe Browsing pode ter falsos positivos e falsos negativos** (exigência dos termos do Google).
 - Tudo entregue em cerca de 1 semana de trabalho.

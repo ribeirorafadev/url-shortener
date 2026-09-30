@@ -1,7 +1,7 @@
 # Convenções de Código — short-url
 
 ## Formatação
-- Linter/formatter: ESLint + Prettier, que é o padrão global do autor para JS/TS. Configuração exata (regras, execução em pre-commit ou só no CI) a definir no setup.
+- Linter/formatter: ESLint + Prettier, que é o padrão global do autor para JS/TS. O lint roda no CI a cada push (ver `architecture.md`, "CI no MVP"). As regras exatas e um eventual hook de pre-commit ficam para o setup.
   - O ESLint do Next (`eslint-config-next`) depende do `typescript-eslint`, que exige TypeScript `<6.1.0`. Por isso o projeto usa o TS 6.0.3 (ver `architecture.md`).
   - Regra `import/no-extraneous-dependencies: error`. O plugin `eslint-plugin-import` já vem com o `eslint-config-next`. Ela barra a dependência fantasma: todo pacote importado precisa estar declarado no `package.json`.
   - Candidata a definir na spec: regra `no-restricted-imports` para barrar `next/*`, `@/data/*` e `@/infra/*` dentro de `src/domain/` e transformar o AD-004 em erro de lint.
@@ -23,5 +23,6 @@ Decidido em 2026-09-28.
   - Exemplos: `feat(domain): gera slug base62 com CSPRNG`, `fix(redirect): responde 410 para link desativado`, `chore(deps): fixa prisma em 7.10.0`.
 - **Sem validação automática** (projeto solo). Evolução possível: hook `commit-msg` em shell em `.githooks/` com `core.hooksPath`, sem dependência. commitlint + husky foram descartados por adicionarem dependências.
 - **Trailer `Co-Authored-By` do Claude mantido** nos commits feitos pelo agente. É uma escolha de transparência: o desenvolvimento é guiado por IA.
-- **Branches:** `main` sempre "deployável"; cada spec ganha uma branch própria (ex.: `feat/mvp`), que é a **Branch Alvo** do cabeçalho da spec. Push só depois que o Rafael criar o repositório no GitHub.
+- **Branches:** `main` sempre "deployável"; cada spec ganha uma branch própria (ex.: `feat/mvp`), que é a **Branch Alvo** do cabeçalho da spec. Push só com autorização do Rafael.
+- **Pull Requests (decidido em 2026-09-30):** o código entra na `main` só por PR com o CI verde, porque o ruleset da `main` barra o merge com ✗ (ver `architecture.md`, "Publicação só com o CI verde"). O título do PR segue o mesmo formato de Conventional Commits. O ruleset é ativado no setup, junto com o CI; até lá, os commits de documentação da fase de design vão direto na `main`.
 
