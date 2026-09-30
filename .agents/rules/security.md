@@ -81,7 +81,6 @@ Regra de negócio em `domain.md` (R7). Aqui ficam os aspectos de segurança, pri
   - só no servidor, via variável de ambiente `SAFE_BROWSING_API_KEY` (nunca no cliente nem em `NEXT_PUBLIC_*`);
   - **restrita no console à Safe Browsing API**, para uma chave vazada não servir para outras APIs do projeto;
   - vai na query string da chamada ao Google (`?key=`), então **nunca logar a URL da requisição** ao Google.
-- **Pendentes:**
-  - B1: serviço fora do ar ou cota esgotada (fail-open ou fail-closed);
-  - B2: pasta do adaptador;
-  - B3: mensagem de bloqueio com a atribuição obrigatória "Advisory provided by Google".
+- **Serviço indisponível (B1): fail-closed**, com timeout de **2 s** na chamada. Com fail-open, um atacante com vários IPs poderia esgotar a cota diária de propósito e desligar a checagem quando quisesse. O redirect não depende do Google. Detalhes em `domain.md` (R7).
+- **Adaptador:** fica em `src/infra/` (B2). A API key só é lida ali.
+- **Mensagem de bloqueio (B3):** texto qualificado ("suspeito"), nunca afirmando certeza, mais a linha "Advisory provided by Google" com link para `https://developers.google.com/safe-browsing/v4/advisory`, e o aviso de falso positivo e falso negativo no README. São exigências da doc "Appropriate Usage" ("User warnings"). Texto final em `domain.md` (R7).

@@ -17,12 +17,12 @@
   - **blocklist (Google Safe Browsing, regra R7) incluída no MVP** (seção 2e).
 
 **Fase atual:** design, seguindo `superpowers:brainstorming` pelo **caminho arquitetural**. **Nenhum código foi escrito, e isso é intencional.** O hard-gate da skill só libera a implementação depois de três passos: spec escrita e aprovada, plano (`superpowers:writing-plans`) aprovado e método de execução escolhido.
-**Próxima etapa:** as **3 decisões da blocklist (B1 a B3, seção 2e)**, uma por mensagem, começando pela **B1** (Safe Browsing fora do ar). Depois, o **P7** (último da pauta, seção 2d). Depois, a estratégia de testes.
+**Próxima etapa:** a última decisão da blocklist (**B3**, mensagem de bloqueio, seção 2e; B1 e B2 já estão fechadas). Depois, o **P7** (último da pauta, seção 2d). Depois, a estratégia de testes.
 
 ### Como retomar (primeiros passos da nova sessão)
 1. `git status -sb` deve mostrar `main...origin/main` sem pendências. Se houver algo, pergunte ao Rafael antes de mexer.
 2. Invoque `superpowers:brainstorming`: a sessão continua no **caminho arquitetural**, na etapa "apresentar o design em seções". Nada de código antes da spec e do plano aprovados.
-3. Apresente a **B1** no formato de "What Worked": cenário concreto, cada opção em 1–2 frases com uma mini linha do tempo, tabela curta sem jargão, recomendação. Registre no arquivo certo assim que o Rafael fechar, e siga para B2, B3 e P7.
+3. Apresente a **B3** no formato de "What Worked": cenário concreto, cada opção em 1–2 frases com uma mini linha do tempo, tabela curta sem jargão, recomendação. Registre no arquivo certo assim que o Rafael fechar, e siga para o P7.
 4. Depois do P7, siga a ordem dos Next Steps: estratégia de testes → spec.
 5. **Commite e dê push ao fim de cada bloco de decisões** (com autorização do Rafael). Em 2026-09-30, um Ctrl+Z no editor desfez edições ainda não commitadas (ver "What Didn't Work").
 
@@ -40,7 +40,7 @@ O escopo do MVP, o que ficou fora de escopo e o critério de "pronto" estão em 
 |---|---|
 | `docs/superpowers/PRD.md` | Problema, público, escopo do MVP (inclui **idioma pt-BR**, **blocklist R7** e **QR na página de gestão**), **fora de escopo** (inclui alias, edição de destino, i18n e reverificação periódica, com os motivos) e critério de "pronto" |
 | `docs/superpowers/ADR.md` | AD-001 a AD-004. É append-only: **nunca editar** |
-| `.agents/rules/architecture.md` | Stack, **baseline de versões**, **npm endurecido** (e por que não pnpm/bun), conexões pooled/direct do Neon, **driver adapter `@prisma/adapter-pg` com `attachDatabasePool` e os timeouts do pool (D1, 10e)**, camadas, pastas (client Prisma gerado em `src/data/generated/prisma/`) e decisões não negociáveis. O QR code fica na camada de entrada |
+| `.agents/rules/architecture.md` | Stack, **baseline de versões**, **npm endurecido** (e por que não pnpm/bun), conexões pooled/direct do Neon, **árvore de pastas com `src/infra/` (B2)**, **driver adapter `@prisma/adapter-pg` com `attachDatabasePool` e os timeouts do pool (D1, 10e)**, camadas, pastas (client Prisma gerado em `src/data/generated/prisma/`) e decisões não negociáveis. O QR code fica na camada de entrada |
 | `.agents/rules/code-style.md` | Lint (restrição do TS 6, `import/no-extraneous-dependencies`, candidata `no-restricted-imports`), **arquivos em kebab-case**, **padrão de commit** e branches |
 | `.agents/rules/security.md` | Ameaças (phishing com R1 a R7), política (segredos, **`.npmrc` sem token**, artefatos de teste ignorados), ameaças novas de 2026-09-29 (HEAD/bots, varredura de caminhos, **CSRF das Server Actions**), **decidido** (hash e formato do token, IP não persistido), **vazamentos do token** (Referer mitigado, logs e histórico aceitos), **números do rate limit e chave `/64` no IPv6 (10b, 10c)**, **rate limiter indisponível: fail-open no redirect, fail-closed na criação (10a)** e **blocklist do Safe Browsing: privacidade, custo, cota e API key** |
 | `.agents/context/domain.md` | Glossário, regras de negócio (**validação R1 a R7**, **`trim()` (P4)**, **IDN/homógrafo (P6)**, **limite e expiração**, **colisão de slug**, **pré-validação do slug**, **respostas 302/404/410/429/503 e páginas do redirect**, **SQL atômico corrigido**, **registro com `after()`**, **token e contrato da `createLink`** (QR opcional, P1; duplo envio, P3; perda do token, P5), **parâmetros ignorados (P2)**, QR), **bots de preview e `HEAD`**, fluxos (criação e redirect passo a passo), **modelo de dados completo**, **página de gestão** (janela, desativação irreversível e idempotente) e **mapa de erros** |
@@ -52,7 +52,7 @@ O escopo do MVP, o que ficou fora de escopo e o critério de "pronto" estão em 
 ### 1. Decisões fechadas antes desta sessão (não reabrir sem motivo novo)
 - **Stack:** Next.js (App Router) full-stack na Vercel (AD-001), Prisma + Neon (AD-002), Upstash **só** para rate limit, Tailwind + shadcn/ui e lib `qrcode`.
 - **Sem login:** a gestão é feita por um token secreto (AD-003).
-- **Três camadas:** entrada `src/app`, domínio `src/domain` (TS puro) e dados `src/data` (único lugar com Prisma). Ver AD-004.
+- **Três camadas:** entrada `src/app`, domínio `src/domain` (TS puro) e dados `src/data` (único lugar com Prisma). Ver AD-004. *Complemento de 2026-09-30 (B2):* os adaptadores de serviços externos ficam em `src/infra/`, ao lado de `src/data/` (seção 2e).
 - **Redirect:** 302 + `no-store`, 404 ou 410. Slug base62 de 7 caracteres via CSPRNG. Incremento atômico. Registro do clique fora do caminho crítico. Rate limiter como guarda na camada de entrada.
 
 ### 2. Decidido na sessão de 2026-09-24 a 27
@@ -230,9 +230,9 @@ O Rafael perguntou se valia incluir a blocklist, que o PRD deixava como evoluç�
 
 | # | Decisão | Contexto |
 |---|---|---|
-| B1 | Safe Browsing fora do ar, lento ou com cota esgotada | Fail-open (cria sem checar) ou fail-closed (recusa a criação, como no rate limit da 10a)? Timeout da chamada |
-| B2 | Pasta do adaptador | `src/infra/` (integrações externas) ou dentro de `src/data/`, que hoje é "o único lugar que importa Prisma" |
-| B3 | Mensagem de bloqueio | Texto em pt-BR, posição da atribuição "Advisory provided by Google" e o link. A linha no mapa de erros do `domain.md` está como "a decidir" |
+| B1 | Safe Browsing fora do ar, lento ou com cota esgotada | ✅ **Fail-closed** (2026-09-30), com timeout de 2 s. Com fail-open, o atacante esgotaria a cota de propósito para desligar a checagem. Ver `domain.md` R7 e `security.md` |
+| B2 | Pasta do adaptador | ✅ **`src/infra/`** (2026-09-30), pasta nova de integrações externas, ao lado de `src/data/`, que segue só com Prisma. Árvore de pastas e direção das dependências em `architecture.md`; regra de lint candidata ampliada para `@/infra/*` (`code-style.md`) |
+| B3 | Mensagem de bloqueio | ✅ **A** (2026-09-30): texto em pt-BR qualificado ("suspeito") + "Advisory provided by Google" em inglês, com link; `threatAdvisory?: true` no estado de erro; aviso de falso positivo e negativo no README. Ver `domain.md` R7 |
 
 **Pendente visual:** no Excalidraw, a seção SYSTEM DESIGN precisa de uma caixa externa "Google Safe Browsing" ligada ao domínio (só com o pedido explícito do Rafael, ver "What Didn't Work").
 
@@ -323,7 +323,9 @@ Na ordem do processo arquitetural do `superpowers:brainstorming`:
 2. ✅ **Tratamento de erros** fechado em 2026-09-30: 10a a 10e e o mapa de erros (seção 2d).
    - ✅ pauta P1 a P6 (seção 2d);
    - ✅ blocklist incluída no MVP como R7 (seção 2e);
-   - **Próximo: B1 → B2 → B3** (seção 2e) **→ P7** (seção 2d), um por mensagem.
+   - ✅ B1 (fail-closed);
+   - ✅ B2 (`src/infra/`);
+   - **Próximo: B3** (seção 2e) **→ P7** (seção 2d), um por mensagem.
 3. **Estratégia de testes:**
    - ferramenta (ex.: Vitest);
    - domínio com fakes em memória;
@@ -333,7 +335,7 @@ Na ordem do processo arquitetural do `superpowers:brainstorming`:
    - R7 no domínio com fake do `UrlThreatChecker` (seguro, perigoso, fora do ar).
 4. **Escrever a spec:**
    - arquivo `docs/superpowers/specs/2026-09-XX-short-url-mvp-design.md`, no formato de `.agents/rules/spec-workflow.md`: cabeçalho Data/Status/Branch Alvo, seções numeradas, `## Alternativas consideradas e por que foram descartadas` e `## Requisitos rastreados` com RF/RNF;
-   - consolidar tudo de `domain.md`, `security.md`, `architecture.md` e PRD, incluindo a nota sobre o AD-004 e o QR;
+   - consolidar tudo de `domain.md`, `security.md`, `architecture.md` e PRD, incluindo **duas notas sobre o AD-004**, que é append-only e não pode ser editado: o QR saiu do domínio para a entrada, e os adaptadores ganharam a pasta `src/infra/` além de `src/data/` (B2). Nenhuma das duas passa no critério de ADR;
    - incluir os itens de setup que vieram da baseline e do npm: `.npmrc` com `save-exact=true`, `min-release-age=1` e `strict-allow-scripts=true`, `allowScripts` no `package.json`, regra `import/no-extraneous-dependencies`, `engines.node`, o script `prisma generate && next build`, o `.env.example` com `DATABASE_URL`, `DIRECT_URL`, os tokens do Upstash e a `SAFE_BROWSING_API_KEY`, e instalação sempre com versão explícita;
    - pré-requisito externo: o Rafael cria o projeto no Google Cloud e a API key restrita à Safe Browsing API (seção 2e);
    - adicionar a linha em `specs/README.md`;

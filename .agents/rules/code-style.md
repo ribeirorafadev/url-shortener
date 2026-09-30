@@ -4,7 +4,7 @@
 - Linter/formatter: ESLint + Prettier, que é o padrão global do autor para JS/TS. Configuração exata (regras, execução em pre-commit ou só no CI) a definir no setup.
   - O ESLint do Next (`eslint-config-next`) depende do `typescript-eslint`, que exige TypeScript `<6.1.0`. Por isso o projeto usa o TS 6.0.3 (ver `architecture.md`).
   - Regra `import/no-extraneous-dependencies: error`. O plugin `eslint-plugin-import` já vem com o `eslint-config-next`. Ela barra a dependência fantasma: todo pacote importado precisa estar declarado no `package.json`.
-  - Candidata a definir na spec: regra `no-restricted-imports` para barrar `next/*` e `@/data/*` dentro de `src/domain/` e transformar o AD-004 em erro de lint.
+  - Candidata a definir na spec: regra `no-restricted-imports` para barrar `next/*`, `@/data/*` e `@/infra/*` dentro de `src/domain/` e transformar o AD-004 em erro de lint.
 - Indentação: ver `.editorconfig` (gerado automaticamente — não duplicar valor aqui)
 
 ## Nomenclatura

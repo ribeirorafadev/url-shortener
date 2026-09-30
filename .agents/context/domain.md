@@ -35,7 +35,18 @@ Glossário, regras de negócio e fluxos já decididos. O schema de dados está *
       - Google Web Risk, que envia a URL inteira e é voltado a uso comercial com faturamento;
       - URLhaus, que foca em malware, não em phishing, e exige Auth-Key.
     - **Limitações:** só pega o que o Google já conhece (golpe recém-criado passa). Um site que vira golpe depois da criação não é pego; a reverificação periódica é evolução (PRD).
-    - **Pendentes (decidir na sequência):** B1, o que fazer se o serviço estiver fora do ar ou a cota acabar; B2, onde fica o adaptador (`src/infra/` ou `src/data/`); B3, texto da mensagem de bloqueio e posição da atribuição.
+    - **Serviço indisponível (B1, decidido em 2026-09-30): fail-closed.** Se o Google não responder em **2 s**, der erro ou a cota tiver acabado, a criação é recusada com "Não foi possível criar o link agora. Tente em alguns minutos.", e a falha é logada (sem a API key). Motivo: com fail-open, um atacante poderia **esgotar a cota de propósito** e desligar a proteção quando quisesse. O redirect nunca consulta o Google, então os links existentes não são afetados. É coerente com a criação fail-closed do rate limit (10a). Descartado: fail-open (criar sem checar).
+    - **Onde fica o adaptador (B2, decidido em 2026-09-30):** `src/infra/safe-browsing-url-threat-checker.ts`, na pasta nova de integrações externas (ver `architecture.md`). `src/data/` continua só com o banco.
+    - **Mensagem de bloqueio (B3, decidida em 2026-09-30).** Aparece embaixo do campo `url`:
+      > ⚠ Este endereço é suspeito de golpe (phishing) ou de distribuir vírus e não pode ser encurtado. A checagem do Google pode errar; se o site é seu e é seguro, você pode pedir revisão ao Google.
+      > Advisory provided by Google ← link para `https://developers.google.com/safe-browsing/v4/advisory`
+      - Exigências do Google (doc "Appropriate Usage", seção "User warnings"), que não são escolha nossa:
+        - **não afirmar certeza**: usar termos como "suspeito", "possível" ou "provável";
+        - a **atribuição "Advisory provided by Google" com link** para o Safe Browsing Advisory;
+        - o **README** deve avisar sobre falsos positivos e falsos negativos (ver PRD, critério de "pronto").
+      - A atribuição fica **em inglês, com a frase exata**, como um aviso legal: a versão em português da doc é tradução automática. Não se usa o tipo de ameaça no texto.
+      - Contrato: o estado de erro da `createLink` ganha `threatAdvisory?: true`, para a tela desenhar a linha do Google com o link (o `fieldErrors` só carrega texto).
+      - Descartados: atribuição traduzida ("Aviso fornecido pelo Google", arrisca descumprir os termos) e texto por tipo de ameaça (trabalho extra e detalhe útil sobretudo ao golpista).
   - Fora de escopo (PRD): bloqueio de outros encurtadores e reverificação periódica dos links já criados.
   - **Domínios internacionalizados (IDN) e ataque homógrafo (P6, decidido em 2026-09-30): aceitos, com limitação documentada.** O `new URL()` converte o host para punycode (`аpple.com` com "а" cirílico → `xn--pple-43d.com`). O navegador de quem clica denuncia o disfarce: o Chrome exibe punycode quando detecta mistura de alfabetos ou um domínio inteiro de letras sósias (doc "IDN in Google Chrome"). Descartados: recusar mistura de alfabetos, que fica como **evolução** (ganho pequeno, porque o golpe mais comum usa só letras latinas, como `paypa1.com`, que só a blocklist da R7 pode pegar), e aceitar só ASCII, que barraria domínios `.br` legítimos com acento.
 - **Limite de cliques e expiração**: opcionais. O padrão é sem limite e sem expiração. São funcionalidades de produto (link de uso único, campanha com prazo), **não** proteção. A proteção é o rate limiting. Os dois podem ser combinados. Regras decididas em 2026-09-28 (a borda converte as strings do `FormData` em tipos, e o `LinkService` valida):
@@ -87,7 +98,7 @@ Glossário, regras de negócio e fluxos já decididos. O schema de dados está *
   type CreateLinkState =
     | { status: 'idle' }
     | { status: 'success'; shortUrl: string; manageUrl: string; qrCodeDataUrl: string | null; isInsecureDestination: boolean }
-    | { status: 'error'; fieldErrors?: Partial<Record<'url' | 'maxClicks' | 'expiration', string>>; message?: string }
+    | { status: 'error'; fieldErrors?: Partial<Record<'url' | 'maxClicks' | 'expiration', string>>; message?: string; threatAdvisory?: true }
   ```
 
   `shortUrl` e `manageUrl` são absolutos (`https://<domínio>/...`). `isInsecureDestination` alimenta o aviso de destino `http:` (R1). O mapeamento completo de erros está em "Mapa de erros", no fim do arquivo.
@@ -191,7 +202,7 @@ Princípio: mensagem clara para o usuário, **nenhum detalhe interno** (stack tr
 | `url` | R2: usuário e senha na URL | Links com usuário e senha embutidos não são aceitos. | domínio |
 | `url` | R3: próprio domínio | Não é possível encurtar um link deste próprio encurtador. | domínio |
 | `url` | R4: host não público | O destino precisa ser um site público. | domínio |
-| `url` | R7: listada no Safe Browsing | *Texto e atribuição ao Google a decidir (B3).* | domínio (via `UrlThreatChecker`) |
+| `url` | R7: listada no Safe Browsing | Este endereço é suspeito de golpe (phishing) ou de distribuir vírus e não pode ser encurtado. A checagem do Google pode errar; se o site é seu e é seguro, você pode pedir revisão ao Google. + linha "Advisory provided by Google" com link (`threatAdvisory: true`) | domínio (via `UrlThreatChecker`) |
 | `maxClicks` | não é inteiro (`10abc`, `2.5`, `-5`, `1e3`) | Informe um número inteiro, sem letras ou casas decimais. | entrada |
 | `maxClicks` | fora de 1 a 1.000.000 | O limite deve ficar entre 1 e 1.000.000 cliques. | domínio |
 | `expiration` | data inválida (`2026-02-30`) | Data inválida. | entrada |
@@ -210,7 +221,7 @@ Princípio: mensagem clara para o usuário, **nenhum detalhe interno** (stack tr
 | Rate limit diário | Você atingiu o limite de links por hoje. Tente amanhã. | não |
 | Upstash indisponível (fail-closed) | Não foi possível criar o link agora. Tente em alguns minutos. | sim |
 | Banco lento ou fora (timeout de 5 s) | *(a mesma acima)* | sim |
-| Safe Browsing fora do ar ou cota esgotada | *A decidir (B1)* | sim |
+| Safe Browsing fora do ar, lento (> 2 s) ou cota esgotada (B1, fail-closed) | Não foi possível criar o link agora. Tente em alguns minutos. | sim |
 | 3 colisões de slug seguidas | *(a mesma acima)* | sim, como erro |
 | Erro inesperado | Algo deu errado. Tente novamente. | sim |
 
