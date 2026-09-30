@@ -194,12 +194,12 @@ O ADR não mudou. O 8b é o caso mais próximo, porque mudar o formato da URL de
 
 | # | Cenário | Tipo proposto |
 |---|---|---|
-| P1 | **Falha depois de gravar:** o link é gravado e só depois o QR é gerado. Se o QR falhar e a action devolver erro, o token (exibido uma vez só) se perde, e o link fica órfão. Hipótese a debater: `qrCodeDataUrl` opcional (`string \| null`) no estado de sucesso | decisão |
-| P2 | **Parâmetros no link curto:** `/aB3xZ9k?utm_source=instagram` é repassado ao destino ou ignorado? | decisão |
-| P3 | **Duplo clique no "Encurtar"** criaria 2 links. Proposta: botão desabilitado enquanto `isPending` (`useActionState`) | regra simples |
-| P4 | **Espaços colados junto com a URL.** Proposta: `trim()` na entrada antes de validar | regra simples |
-| P5 | **Resposta perdida na rede** depois de gravar: o token se perde, e o usuário cria outro. Sem conta, não há como recuperar | limitação a documentar |
-| P6 | **Domínio "sósia" (homógrafo)**, ex.: `аpple.com` com "а" cirílico. O `new URL()` converte para punycode (`xn--…`). Bloquear exigiria blocklist, fora de escopo | limitação a documentar |
+| P1 | **Falha depois de gravar:** o link é gravado e só depois o QR é gerado. Se o QR falhar e a action devolver erro, o token (exibido uma vez só) se perde, e o link fica órfão. Hipótese a debater: `qrCodeDataUrl` opcional (`string \| null`) no estado de sucesso | ✅ **B** (2026-09-30): sucesso parcial com `qrCodeDataUrl: null`; ver `domain.md`. **P1b: C**: QR também na página de gestão (`domain.md`, `architecture.md`, PRD) |
+| P2 | **Parâmetros no link curto:** `/aB3xZ9k?utm_source=instagram` é repassado ao destino ou ignorado? | ✅ **A** (2026-09-30): ignorar; ver `domain.md`. Dica para o README: "um link por canal", com UTM no destino |
+| P3 | **Duplo clique no "Encurtar"** criaria 2 links. Proposta: botão desabilitado enquanto `isPending` (`useActionState`) | ✅ **B** (2026-09-30): botão desabilitado com `isPending`; ver `domain.md` |
+| P4 | **Espaços colados junto com a URL.** Proposta: `trim()` na entrada antes de validar | ✅ **B** (2026-09-30): `trim()` nas pontas de todos os campos; ver `domain.md` |
+| P5 | **Resposta perdida na rede** depois de gravar: o token se perde, e o usuário cria outro. Sem conta, não há como recuperar | ✅ **B + C** (2026-09-30): destaque no card + `beforeunload` até copiar o link de gestão; perda na rede documentada. Ver `domain.md` |
+| P6 | **Domínio "sósia" (homógrafo)**, ex.: `аpple.com` com "а" cirílico. O `new URL()` converte para punycode (`xn--…`). Bloquear exigiria blocklist, fora de escopo | ✅ **A** (2026-09-30): aceitar e documentar (o Chrome mostra punycode); recusar mistura de alfabetos é evolução. Ver `domain.md` |
 | P7 | **"Até o fim de hoje" escolhido às 23h50:** o link dura 10 min. Comportamento correto, mas pouco intuitivo | limitação a documentar |
 
 ### 3. Documentação visual no Excalidraw

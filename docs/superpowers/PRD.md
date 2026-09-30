@@ -21,7 +21,7 @@ O produto precisa funcionar de verdade, com deploy público: um encurtador de UR
 - Encurtar uma URL e receber um link curto (slug aleatório), um link de gestão secreto (exibido uma única vez) e um QR code.
 - Opções na criação, ambas opcionais: **limite de cliques** e **data de expiração**. O padrão é sem limite e sem expiração.
 - Redirecionamento rápido (HTTP 302), registrando o clique com dispositivo, referrer e data.
-- Página de gestão (`/manage/[token]`) com estatísticas agregadas por dispositivo, referrer e dia, e a opção de desativar o link.
+- Página de gestão (`/manage/[token]`) com estatísticas agregadas por dispositivo, referrer e dia, o QR code do link para baixar de novo e a opção de desativar o link.
 - Rate limiting na criação e no redirecionamento.
 - Validação da URL de destino: só `http`/`https`.
 - **Idioma: pt-BR** na interface e no README, porque o alvo atual do portfólio são vagas no Brasil (decidido em 2026-09-28). É coerente com o fuso fixo em `America/Sao_Paulo` e com os textos já definidos (rótulo do gráfico, card neutro para bots). Os identificadores de código ficam em inglês.
