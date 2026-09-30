@@ -14,6 +14,9 @@ Glossário, regras de negócio e fluxos já decididos. O schema de dados está *
 ## Regras de negócio
 
 - **Slug**: 7 caracteres base62, gerados com CSPRNG (ex.: `crypto.getRandomValues`, nativo), o que dá ~3,5 × 10¹² combinações. Tem constraint `UNIQUE` no banco e, se houver colisão, gera outro. Nunca sequencial, para impedir enumeração.
+  - **Colisão (decidida em 2026-09-30): até 3 tentativas.** A colisão é detectada **na gravação**: o `INSERT` falha pelo `UNIQUE` (erro `P2002` do Prisma), e o repositório traduz isso num erro do domínio. Nunca "consultar e depois gravar", que tem race condition entre as duas etapas. O `LinkService` sorteia de novo, até 3 vezes no total.
+  - Três colisões seguidas (~1 em 10¹⁹ com 1 milhão de links) não são azar, são sinal de defeito (ex.: gerador quebrado). Nesse caso a criação devolve erro genérico e **loga como erro**.
+  - Descartados: sem nova tentativa (usuário veria erro por azar, 1 em 3,5 milhões com 1 milhão de links) e loop sem limite (um bug viraria função travada martelando o banco até o timeout).
 - **Validação da URL de destino** (decidida em 2026-09-28). Fica numa função pura do domínio (`UrlValidator`). A análise usa o `new URL()` nativo (WHATWG), e as regras valem **sobre o resultado da análise, não sobre o texto**. A borda só barra entrada vazia ou maior que o limite antes de chamar o domínio.
   - **R1.** Protocolo só `http:`/`https:`. Rejeita `javascript:`, `data:`, `file:` e outros.
     - `http:` continua aceito (decidido em 2026-09-28), mas a tela de criação mostra o **aviso** "este destino não usa conexão segura" quando o protocolo final for `http:`. Motivos para não exigir só HTTPS: o ganho contra phishing é nulo (sites de phishing usam HTTPS com certificado grátis); o Chrome 154 (outubro de 2026) já avisa antes de abrir site público em HTTP; e o servidor não acessa o destino, então não pode promover `http` para `https` sem risco de gerar link quebrado.
@@ -34,23 +37,28 @@ Glossário, regras de negócio e fluxos já decididos. O schema de dados está *
   - `302 Found` + `Cache-Control: no-store` quando o link está ativo;
   - `404 Not Found` quando o slug não existe;
   - `410 Gone` quando o link existe mas expirou, esgotou o limite ou foi desativado.
-  - **Corpo das respostas sem redirect (decidido em 2026-09-29):** o `404`, o `410` e a página neutra dos bots (`200`) levam um **HTML mínimo em pt-BR gerado no próprio Route Handler**: título, uma frase, CSS inline e um link "criar um novo link". Um único módulo de templates, na camada de entrada, gera as três páginas.
+  - `429 Too Many Requests` + `Retry-After` quando o IP passa do rate limit (ver `security.md`, "Números do rate limit").
+  - `503 Service Unavailable` + `Retry-After` quando o banco não responde em 5 s (`connectionTimeoutMillis`, ver `architecture.md`) ou falha. O texto é fixo: "Serviço indisponível. Tente novamente em instantes." O erro é logado com o slug, nunca com o destino. Na criação, o mesmo caso vira o estado `error` com "Não foi possível criar o link agora. Tente em alguns minutos."
+  - **Corpo das respostas sem redirect (decidido em 2026-09-29):** o `404`, o `410` e a página neutra dos bots (`200`) levam um **HTML mínimo em pt-BR gerado no próprio Route Handler**: título, uma frase, CSS inline e um link "criar um novo link". Um único módulo de templates, na camada de entrada, gera essas três páginas e também as de `429` e `503`.
     - O **texto é fixo**, e nenhum dado do link (slug, destino) é interpolado no HTML, o que elimina XSS por construção.
     - Headers: `Content-Type: text/html; charset=utf-8` e `Cache-Control: no-store`.
     - **O `410` mostra o motivo, com um texto fixo por caso** (decidido em 2026-09-29): "Este link foi desativado por quem o criou.", "Este link expirou." ou "Este link atingiu o limite de acessos.". Sem data nem número de acessos, para manter "nada do link no HTML". Se mais de um motivo valer, a precedência é **desativado → expirado → esgotado**, porque a ação explícita do criador vem primeiro. O domínio devolve o motivo como tipo discriminado (ex.: `'deactivated' | 'expired' | 'exhausted'`). Descartados: mensagem genérica (a pessoa que clicou não sabe o que fazer) e motivo com detalhes (expõe escolhas do criador sem ganho).
     - Motivo: o redirect é um `route.ts`, que devolve uma `Response` crua, e uma página React não consegue responder `410`.
     - Descartados: texto puro (parece app quebrado para quem avalia o portfólio) e redirect para uma página React (`302 → 200`), que deixaria de responder `410`/`404` de verdade e violaria o critério de "pronto" do PRD.
 - **Por que 302 e não 301**: o 301 é cacheado pelo navegador. A partir do segundo clique, o navegador vai direto ao destino sem passar pelo servidor, e o sistema perde o analytics e o controle de expiração e desativação.
-- **Incremento atômico**: a checagem de limite e de expiração e o incremento do contador acontecem numa única operação no banco. Com a checagem separada do incremento, dois cliques simultâneos com o contador em 99 (limite 100) passariam os dois. A forma de referência é esta (a implementação exata via Prisma fica para a spec):
+- **Incremento atômico**: a checagem de desativação, de limite e de expiração e o incremento do contador acontecem numa única operação no banco. Com a checagem separada do incremento, dois cliques simultâneos com o contador em 99 (limite 100) passariam os dois. A forma de referência é esta (a implementação exata via Prisma fica para a spec):
 
   ```sql
   UPDATE links
   SET click_count = click_count + 1
   WHERE slug = $1
+    AND deactivated_at IS NULL
     AND (max_clicks IS NULL OR click_count < max_clicks)
     AND (expires_at IS NULL OR expires_at > now())
-  RETURNING original_url;
+  RETURNING id, destination_url;
   ```
+
+  Corrigido em 2026-09-30: a versão anterior **não checava `deactivated_at`**, então um link desativado continuaria redirecionando. Ela também usava o nome de coluna `original_url`, diferente do schema (`destination_url`), e não devolvia o `id`, que o `after()` precisa para gravar o evento.
 
   Se zero linhas forem afetadas, o link não existe ou está inativo. É preciso distinguir os dois casos para responder 404 ou 410.
 - **Registro detalhado do clique** (dispositivo, referrer): fica fora do caminho crítico do redirect, gravado depois que a resposta sai (decidido em 2026-09-29). O mecanismo é o **`after()` de `next/server`**, que funciona em Route Handler e, na Vercel, usa o `waitUntil` da plataforma para manter a função viva até o fim do callback. Esse prazo é o `maxDuration` da rota: 300 s no Hobby com Fluid compute. Um "fire and forget" comum poderia ser interrompido quando a função termina.
@@ -69,7 +77,7 @@ Glossário, regras de negócio e fluxos já decididos. O schema de dados está *
     | { status: 'error'; fieldErrors?: Partial<Record<'url' | 'maxClicks' | 'expiration', string>>; message?: string }
   ```
 
-  `shortUrl` e `manageUrl` são absolutos (`https://<domínio>/...`). `isInsecureDestination` alimenta o aviso de destino `http:` (R1). O mapeamento completo de erros fica para a etapa de tratamento de erros.
+  `shortUrl` e `manageUrl` são absolutos (`https://<domínio>/...`). `isInsecureDestination` alimenta o aviso de destino `http:` (R1). O mapeamento completo de erros está em "Mapa de erros", no fim do arquivo.
 - **QR code:** PNG em data URL, com **512 px** (`qrcode.toDataURL`), exibido num `<img>` com botão "baixar". PNG funciona em qualquer lugar (WhatsApp, Word, gráfica). SVG foi descartado porque a exibição inline exigiria `dangerouslySetInnerHTML`. ⚠️ O `qrcode@1.5.4` (último release em 08/2024) traz `yargs@15`, usado só pela CLI dele: reavaliar o peso das dependências transitivas na spec.
 
 ## Bots de preview de link (decidido)
@@ -89,17 +97,18 @@ Quando um link curto é colado no WhatsApp, Slack, Telegram, X, Facebook, Linked
 
 ## Fluxos
 
-1. **Criar link**: formulário → Server Action → rate limit → validação da URL → gera slug e token → grava via Prisma → o domínio devolve o link curto e o token → a Server Action gera o QR code (camada de entrada) → devolve o estado `success` com o link curto, o link de gestão e o QR, exibidos uma única vez no card de resultado.
+1. **Criar link**: formulário → Server Action → rate limit (10/min e 100/dia por IP; Upstash fora → erro, fail-closed) → validação da URL → gera slug e token → grava via Prisma (colisão de slug → sorteia de novo, até 3 tentativas) → o domínio devolve o link curto e o token → a Server Action gera o QR code (camada de entrada) → devolve o estado `success` com o link curto, o link de gestão e o QR, exibidos uma única vez no card de resultado.
 2. **Redirecionar** (caminho mais quente, com leituras ~100× mais frequentes que escritas). Route Handler `src/app/[slug]/route.ts`, que exporta `GET` e `HEAD`:
    ```
    1. isValidSlugFormat(slug) falhou → 404 (sem Upstash nem banco)
-   2. rate limit por IP
+   2. rate limit por IP (/64 no IPv6) → 429 se exceder; Upstash fora ou lento (>1 s) → segue (fail-open)
    3. HEAD ou isPreviewBot(UA)?
       ├─ sim → só lê (findUnique): 404 | 410 com motivo | com limite → 200 página neutra | sem limite → 302 sem incrementar
       └─ não → updateManyAndReturn (atômico)
                ├─ 1 linha → 302 + Cache-Control: no-store
                └─ vazio  → findUnique: 404 ou 410 com motivo
    4. after(): grava o evento de clique (BOT para bot de preview; nada para HEAD)
+   banco sem resposta em 5 s ou com falha, em qualquer passo → 503
    ```
 3. **Gerenciar**: `GET /manage/[token]` → busca o link pelo token (nunca pelo slug) → agrega os cliques no Postgres (totais de toda a vida por dispositivo e referrer; gráfico diário dos últimos 30 dias) → dashboard renderizado no servidor, com `Referrer-Policy: no-referrer`, `X-Robots-Tag: noindex` e `Cache-Control: no-store` → desativação via Server Action.
 
@@ -124,13 +133,13 @@ Decidido:
   2. regex no `User-Agent` (`iPad|Tablet` → `TABLET`; `Mobi|Android|iPhone` → `MOBILE`);
   3. senão `DESKTOP`;
   4. sem UA → `UNKNOWN`.
-  
+
   O UA cru não é persistido (minimização; o UA ajuda em fingerprinting). **Limitação documentada:** desde o iPadOS 13, o Safari do iPad manda UA de Mac, então esses iPads aparecem como `DESKTOP`. Android tablets são detectados. Consequência aceita: o histórico não pode ser reclassificado. Descartados: UA cru com classificação na leitura (duplica a regra no SQL e encarece o `GROUP BY`) e categoria + UA cru com retenção curta (exige job agendado, YAGNI).
 - **Referrer guardado só como host normalizado**: `referrer_host text NULL`, em que `null` significa direto/desconhecido. É extraído por uma função pura do domínio: `new URL()`, só `http:`/`https:`, `hostname` em minúsculas e sem `www.`; qualquer outra coisa vira `null`. O parsing já é a sanitização, porque o header é input hostil (*referral spam*) e um hostname tem no máximo 253 caracteres. Ganha-se pouco com mais do que o host: desde ~2021 os navegadores usam `strict-origin-when-cross-origin` por padrão e só mandam a origem entre sites diferentes. Apps nativos (WhatsApp, e-mail) não mandam referrer, então o dashboard precisa explicar o balde "direto/desconhecido". Descartados: URL completa e host+caminho (quase nunca chegam e podem expor PII de terceiros ao criador do link, que é anônimo). Evolução: agrupar por domínio registrável (`l.facebook.com` e `m.facebook.com` → `facebook.com`), o que exige a Public Suffix List.
 - **O "dia" das estatísticas é o dia em `America/Sao_Paulo`**, com o rótulo "dias no horário de Brasília" no gráfico: `date_trunc('day', clicked_at AT TIME ZONE 'America/Sao_Paulo')`. Usa o nome IANA, não o offset `-03:00`, para que o banco de fusos absorva uma eventual volta do horário de verão (abolido pelo Decreto 9.772/2019). Descartados:
   - UTC: cliques entre 21h e 23h59 de Brasília cairiam no dia seguinte;
   - agregar por hora em UTC e juntar em dias no cliente: falha em fusos com meia hora e duplica lógica no navegador.
-  
+
   **Evolução documentada:** usar o fuso do navegador de quem vê (`Intl`), enviado por cookie e validado por whitelist com `Intl.supportedValuesOf('timeZone')`. Muda só a query e a entrada, não o schema.
 
 Modelo de dados fechado.
@@ -138,4 +147,56 @@ Modelo de dados fechado.
 ## Página de gestão (`/manage/[token]`)
 
 - **Janela do gráfico diário (decidida em 2026-09-29): últimos 30 dias, ou desde a criação se o link for mais novo.** O gráfico fica sempre legível (no máximo 30 barras), e a consulta tem custo fixo, coberta pelo índice `(link_id, clicked_at)`. Os **totais** (cliques, por dispositivo e por referrer) cobrem **toda a vida do link**; só o gráfico tem janela. Descartados: desde a criação (centenas de barras em links antigos e uma consulta que cresce com a idade) e seletor de 7/30/90 dias, que fica como **evolução** (acrescentar depois não muda o banco; exige whitelist no `?dias=`).
+- **Desativação irreversível, com confirmação (decidida em 2026-09-29):** o botão "Desativar" abre um passo de confirmação na própria página ("Tem certeza? Não dá para desfazer" → "Sim, desativar"). Não existe `reactivateLink`. Motivo: o PRD limita o impacto de um token vazado a "ver e desativar, nunca sequestrar". Com reativação, quem roubasse o token poderia religar um link que o dono desligou de propósito (ex.: documento privado compartilhado por engano). Descartados: reversível (amplia o poder do token vazado) e um clique só, sem confirmação (um clique errado perde o link para sempre, inclusive QR impresso).
+- **`deactivateLink` idempotente (decidida em 2026-09-29):** desativar um link já desativado responde **sucesso** e **mantém a data original** de `deactivated_at`. O banco roda `UPDATE … SET deactivated_at = now() WHERE manage_token_hash = $1 AND deactivated_at IS NULL`. Se nenhuma linha for afetada, uma busca pelo hash distingue "token inválido" (erro) de "já desativado" (sucesso). Base: idempotência, RFC 9110, §9.2.2. Descartados: erro "já estava desativado" (o objetivo do usuário já foi cumprido) e sobrescrever a data (ela deixaria de dizer quando o link foi desligado de fato).
+  - **Regra fixa:** a action identifica o link **pelo token (hash)**, nunca pelo slug ou pelo id. O slug é público, então desativar por slug seria IDOR (OWASP API Security Top 10, API1:2023, *Broken Object Level Authorization*). A proteção CSRF é a embutida do Next (ver `security.md`).
 - **Token no path e headers da página (decidido em 2026-09-29):** o token continua em `/manage/[token]`. A resposta leva `Referrer-Policy: no-referrer`, `X-Robots-Tag: noindex` e `Cache-Control: no-store`. O tratamento de cada canal de vazamento (Referer, logs da Vercel, histórico) e as alternativas descartadas estão em `security.md`, "Vazamentos do token".
+
+## Mapa de erros (aprovado em 2026-09-30)
+
+Princípio: mensagem clara para o usuário, **nenhum detalhe interno** (stack trace, nome de tabela, "Prisma"). Erro inesperado vira mensagem genérica mais log, sem token nem URL de destino.
+
+**`createLink`: erros por campo (`fieldErrors`)**, exibidos embaixo do campo:
+
+| Campo | Situação | Mensagem | Onde |
+|---|---|---|---|
+| `url` | vazio | Informe a URL de destino. | entrada |
+| `url` | mais de 2048 caracteres | A URL pode ter no máximo 2048 caracteres. | entrada e domínio (R5) |
+| `url` | não é URL | Isso não parece uma URL válida. Ex.: https://exemplo.com | domínio |
+| `url` | R1: protocolo proibido | Só são aceitos links http:// ou https://. | domínio |
+| `url` | R2: usuário e senha na URL | Links com usuário e senha embutidos não são aceitos. | domínio |
+| `url` | R3: próprio domínio | Não é possível encurtar um link deste próprio encurtador. | domínio |
+| `url` | R4: host não público | O destino precisa ser um site público. | domínio |
+| `maxClicks` | não é inteiro (`10abc`, `2.5`, `-5`, `1e3`) | Informe um número inteiro, sem letras ou casas decimais. | entrada |
+| `maxClicks` | fora de 1 a 1.000.000 | O limite deve ficar entre 1 e 1.000.000 cliques. | domínio |
+| `expiration` | data inválida (`2026-02-30`) | Data inválida. | entrada |
+| `expiration` | data no passado (Brasília) | A data precisa ser hoje ou depois. | domínio |
+| `expiration` | mais de 5 anos | A data pode ser no máximo daqui a 5 anos. | domínio |
+| `expiration` | duração fora da lista (requisição forjada) | Escolha uma das opções de duração. | entrada |
+| `expiration` | duração e data juntas (requisição forjada) | Escolha uma duração ou uma data, não as duas. | entrada |
+
+`maxClicks` e `expiration` vazios significam "sem limite" e "sem expiração", não erro. O destino `http:` gera **aviso**, não erro (`isInsecureDestination`).
+
+**`createLink`: erros gerais (`message`)**, exibidos acima do formulário:
+
+| Situação | Mensagem | Log |
+|---|---|---|
+| Rate limit por minuto | Muitas tentativas. Aguarde um minuto. | não |
+| Rate limit diário | Você atingiu o limite de links por hoje. Tente amanhã. | não |
+| Upstash indisponível (fail-closed) | Não foi possível criar o link agora. Tente em alguns minutos. | sim |
+| Banco lento ou fora (timeout de 5 s) | *(a mesma acima)* | sim |
+| 3 colisões de slug seguidas | *(a mesma acima)* | sim, como erro |
+| Erro inesperado | Algo deu errado. Tente novamente. | sim |
+
+**Página de gestão e `deactivateLink`:**
+
+| Situação | Resposta |
+|---|---|
+| Token fora do formato (43 caracteres base64url) | `404`, sem consultar o banco (mesma ideia da pré-validação do slug) |
+| Token no formato, mas inexistente | `404`, a mesma página (não revela "quase acerto") |
+| Banco fora ao abrir a página | Página "Serviço indisponível. Tente novamente em instantes." |
+| `deactivateLink` com token inválido | Não foi possível desativar: link não encontrado. |
+| `deactivateLink` em link já desativado | Sucesso: Link desativado. (idempotente) |
+| `deactivateLink` com banco fora | Não foi possível desativar agora. Tente em alguns minutos. |
+
+A página de gestão **não tem rate limit**, de propósito: adivinhar um token de 256 bits é inviável, e o limite só gastaria a cota do Upstash.

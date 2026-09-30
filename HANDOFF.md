@@ -1,21 +1,28 @@
 # short-url — Handoff
 
-**Atualizado em:** 2026-09-29
+**Atualizado em:** 2026-09-30
 **Sessões anteriores:**
 - 2026-09-23/24: brainstorming inicial (stack, arquitetura, AD-001 a AD-004).
 - 2026-09-24 a 27: ajuste do system design, modelo de dados e decisões de segurança e produto.
 - 2026-09-28: baseline de versões, Prisma 7, `SERIAL` nas PKs, npm endurecido, kebab-case, pt-BR, padrão de commit, contrato completo da `createLink` (6a a 6c), Excalidraw atualizado, `git init` e push para o GitHub (seção 2b).
-- 2026-09-29: **decisão 7** (`GET`/`HEAD /[slug]`, subdecisões 7a a 7e) e **decisão 8** (`/manage/[token]`, 8a e 8b); premissas `after()` e CSRF das Server Actions verificadas (seção 2c). Última sessão.
+- 2026-09-29/30 (última sessão):
+  - **7a a 7e:** redirect `GET`/`HEAD /[slug]`;
+  - **8a e 8b:** página de gestão;
+  - **9a e 9b:** `deactivateLink`;
+  - **D1:** driver adapter;
+  - **10a a 10e:** tratamento de erros (rate limiter fora do ar, números, IPv6, colisão de slug, timeout do banco);
+  - **mapa de erros** aprovado;
+  - correção de um defeito no SQL atômico (seções 2c e 2d).
 
 **Fase atual:** design, seguindo `superpowers:brainstorming` pelo **caminho arquitetural**. **Nenhum código foi escrito, e isso é intencional.** O hard-gate da skill só libera a implementação depois de três passos: spec escrita e aprovada, plano (`superpowers:writing-plans`) aprovado e método de execução escolhido.
-**Próxima etapa:** continuar **rotas e contratos** com a **decisão 9: Server Action `deactivateLink`**. As decisões 7 (redirect) e 8 (página de gestão) estão fechadas. Ver Next Steps.
+**Próxima etapa:** debater os **7 cenários pendentes (P1 a P7, seção 2d)**, **um por mensagem, começando pelo P1** (falha depois de gravar: o token se perde). O Rafael pediu para debater os 7 antes de seguir para a estratégia de testes.
 
 ### Como retomar (primeiros passos da nova sessão)
 1. `git status -sb` deve mostrar `main...origin/main` sem pendências. Se houver algo, pergunte ao Rafael antes de mexer.
 2. Invoque `superpowers:brainstorming`: a sessão continua no **caminho arquitetural**, na etapa "apresentar o design em seções". Nada de código antes da spec e do plano aprovados.
-3. A premissa de CSRF da `deactivateLink` **já foi verificada** (Next compara `Origin` com `Host`; ver `security.md`, "CSRF nas Server Actions"). Não é preciso checar de novo.
-4. Apresente a decisão 9 **no formato que funcionou em 2026-09-29** (ver "What Worked"): cenário concreto, cada opção em 1–2 frases com uma mini linha do tempo, tabela curta sem jargão, recomendação. Registre no arquivo certo assim que o Rafael fechar.
-5. Depois da 9, siga a ordem dos Next Steps: D1 (driver adapter) → tratamento de erros → testes → spec.
+3. Apresente o **P1** no formato de "What Worked": cenário concreto, cada opção em 1–2 frases com uma mini linha do tempo, tabela curta sem jargão, recomendação. Registre no arquivo certo assim que o Rafael fechar, e siga para o P2.
+4. Depois do P7, siga a ordem dos Next Steps: estratégia de testes → spec.
+5. **Commite e dê push ao fim de cada bloco de decisões** (com autorização do Rafael). Em 2026-09-30, um Ctrl+Z no editor desfez edições ainda não commitadas (ver "What Didn't Work").
 
 ---
 
@@ -31,10 +38,10 @@ O escopo do MVP, o que ficou fora de escopo e o critério de "pronto" estão em 
 |---|---|
 | `docs/superpowers/PRD.md` | Problema, público, escopo do MVP (inclui **idioma pt-BR**), **fora de escopo** (inclui alias, edição de destino e i18n, com os motivos) e critério de "pronto" |
 | `docs/superpowers/ADR.md` | AD-001 a AD-004. É append-only: **nunca editar** |
-| `.agents/rules/architecture.md` | Stack, **baseline de versões**, **npm endurecido** (e por que não pnpm/bun), driver adapter e conexões pooled/direct do Neon, camadas, pastas (client Prisma gerado em `src/data/generated/prisma/`) e decisões não negociáveis. O QR code fica na camada de entrada |
+| `.agents/rules/architecture.md` | Stack, **baseline de versões**, **npm endurecido** (e por que não pnpm/bun), conexões pooled/direct do Neon, **driver adapter `@prisma/adapter-pg` com `attachDatabasePool` e os timeouts do pool (D1, 10e)**, camadas, pastas (client Prisma gerado em `src/data/generated/prisma/`) e decisões não negociáveis. O QR code fica na camada de entrada |
 | `.agents/rules/code-style.md` | Lint (restrição do TS 6, `import/no-extraneous-dependencies`, candidata `no-restricted-imports`), **arquivos em kebab-case**, **padrão de commit** e branches |
-| `.agents/rules/security.md` | Ameaças (phishing com R1 a R6), política (segredos, **`.npmrc` sem token**, artefatos de teste ignorados), ameaças novas de 2026-09-29 (HEAD/bots, varredura de caminhos, **CSRF das Server Actions**), **decidido** (hash e formato do token, IP não persistido), **vazamentos do token** (Referer mitigado, logs e histórico aceitos) e em aberto (fail-open/closed) |
-| `.agents/context/domain.md` | Glossário, regras de negócio (**validação R1 a R6**, **limite e expiração**, **pré-validação do slug**, **respostas e páginas do redirect**, **registro com `after()`**, **token e contrato da `createLink`**, QR), **bots de preview e `HEAD`**, fluxos (redirect detalhado passo a passo), **modelo de dados completo** e **página de gestão** |
+| `.agents/rules/security.md` | Ameaças (phishing com R1 a R6), política (segredos, **`.npmrc` sem token**, artefatos de teste ignorados), ameaças novas de 2026-09-29 (HEAD/bots, varredura de caminhos, **CSRF das Server Actions**), **decidido** (hash e formato do token, IP não persistido), **vazamentos do token** (Referer mitigado, logs e histórico aceitos), **números do rate limit e chave `/64` no IPv6 (10b, 10c)** e **rate limiter indisponível: fail-open no redirect, fail-closed na criação (10a)** |
+| `.agents/context/domain.md` | Glossário, regras de negócio (**validação R1 a R6**, **limite e expiração**, **colisão de slug**, **pré-validação do slug**, **respostas 302/404/410/429/503 e páginas do redirect**, **SQL atômico corrigido**, **registro com `after()`**, **token e contrato da `createLink`**, QR), **bots de preview e `HEAD`**, fluxos (criação e redirect passo a passo), **modelo de dados completo**, **página de gestão** (janela, desativação irreversível e idempotente) e **mapa de erros** |
 | `.gitignore` | Por seções; ignora `.env*` (exceto `.env.example`), chaves e certificados, o client gerado do Prisma e os artefatos de teste (`.playwright-mcp/`, `test-results/`) |
 | Excalidraw (navegador do Rafael) | Documentação visual (ver seção 3) |
 
@@ -153,6 +160,48 @@ O escopo do MVP, o que ficou fora de escopo e o critério de "pronto" estão em 
 
 O ADR não mudou. O 8b é o caso mais próximo, porque mudar o formato da URL de gestão depois quebraria links já entregues, mas fica na spec: dá para migrar aceitando os dois formatos.
 
+### 2d. Decidido em 2026-09-29/30 (segunda parte)
+
+**Premissas verificadas:**
+- **Neon**, "Connecting to Neon from Vercel": com Fluid compute, recomenda TCP (`pg`) com pool. O driver serverless fica para serverless sem Fluid. Na abertura de conexão, o TCP leva ~8 idas e voltas e o WebSocket ~4.
+- **Vercel**, guia "Connection Pooling with Vercel Functions": `attachDatabasePool` fecha as conexões ociosas antes de suspender a instância, e o guia recomenda idle timeout curto (~5 s).
+- **Prisma v7**, doc de connection pool: o `pg` tem `max` 10, `idleTimeoutMillis` 10 s e **`connectionTimeoutMillis` 0, que significa esperar para sempre**. O `PrismaPg` 7.10.0 aceita um `pg.Pool` pronto, conferido no `index.d.ts` do pacote.
+- **Neon**, "Scale to Zero": no Free, o banco desliga após **5 min** sem uso (fixo) e acorda em "algumas centenas de ms".
+- **Upstash:**
+  - o Free tem **500 mil comandos por mês**;
+  - o `@upstash/ratelimit` deixa passar após o `timeout` (padrão de **5 s**, com `reason: "timeout"`).
+- **Vercel** sobrescreve o `x-forwarded-for` (IP não é forjável). Para ler o IP: `ipAddress()` de `@vercel/functions`.
+
+| # | Decisão | Escolha | Registrada em |
+|---|---|---|---|
+| 9a | Desativar pode ser desfeito? | **Não, e com passo de confirmação** na página. Sem `reactivateLink`, porque o token vazado só "vê e desativa, nunca sequestra". Descartados: reversível e um clique só | `domain.md` |
+| 9b | Desativar um link já desativado | **Sucesso idempotente, mantendo a data original** (`UPDATE … WHERE deactivated_at IS NULL`; sem linha afetada, busca pelo hash para distinguir token inválido de "já desativado"). Regra fixa: identificar **pelo token**, nunca pelo slug (IDOR, OWASP API1:2023) | `domain.md` |
+| D1 | Driver adapter | **`@prisma/adapter-pg`** + `pg.Pool` global + **`attachDatabasePool`** (`@vercel/functions`), com `idleTimeoutMillis: 5000`. Descartado: `@prisma/adapter-neon` | `architecture.md` |
+| 10a | Upstash fora do ar | **Redirect: fail-open. Criação: fail-closed.** Na criação, `reason === "timeout"` conta como falha | `security.md` |
+| 10b | Números do rate limit | **Criação: 10/min e 100/dia por IP. Redirect: 300/min por IP.** Janela deslizante, timeout da lib de **1 s**, `429` com `Retry-After` | `security.md` |
+| 10c | Chave no IPv6 | **Prefixo `/64`** (os últimos 64 bits são escolhidos pelo aparelho, RFC 4291 e RFC 8981). `::ffff:` tratado como IPv4. Função pura, sem lib | `security.md` |
+| 10d | Colisão de slug | **Até 3 tentativas**, detectadas no `INSERT` (`P2002`), nunca "consulta e depois grava". 3 colisões seguidas = defeito, logado como erro | `domain.md` |
+| 10e | Timeout do banco | **`connectionTimeoutMillis: 5000`**; estourou → `503` com `Retry-After` no redirect, erro na criação. Descartados: sem timeout e 1 s (falharia ao acordar o Neon) | `architecture.md`, `domain.md` |
+| — | Mapa de erros | Tabela aprovada: `fieldErrors` por campo, `message` geral, gestão e `deactivateLink`. Token fora do formato → `404` sem banco. Página de gestão **sem rate limit** (token de 256 bits) | `domain.md`, "Mapa de erros" |
+
+**Defeito corrigido (2026-09-30):** o SQL atômico de referência **não checava `deactivated_at`**, então um link desativado continuaria redirecionando. Ele também usava a coluna `original_url` (o schema chama `destination_url`) e não devolvia o `id`, que o `after()` precisa. Corrigido em `domain.md`, "Incremento atômico".
+
+**Outros ajustes:**
+- os fluxos de criação e de redirect no `domain.md` agora mostram rate limit, fail-open/closed, colisão, `429` e `503`;
+- o módulo de templates HTML também gera o `429` e o `503`.
+
+**Pauta aberta: P1 a P7.** Levantados pelo agente; o Rafael quer debater **todos, um por mensagem, começando pelo P1**. **Nada disto foi decidido ainda.**
+
+| # | Cenário | Tipo proposto |
+|---|---|---|
+| P1 | **Falha depois de gravar:** o link é gravado e só depois o QR é gerado. Se o QR falhar e a action devolver erro, o token (exibido uma vez só) se perde, e o link fica órfão. Hipótese a debater: `qrCodeDataUrl` opcional (`string \| null`) no estado de sucesso | decisão |
+| P2 | **Parâmetros no link curto:** `/aB3xZ9k?utm_source=instagram` é repassado ao destino ou ignorado? | decisão |
+| P3 | **Duplo clique no "Encurtar"** criaria 2 links. Proposta: botão desabilitado enquanto `isPending` (`useActionState`) | regra simples |
+| P4 | **Espaços colados junto com a URL.** Proposta: `trim()` na entrada antes de validar | regra simples |
+| P5 | **Resposta perdida na rede** depois de gravar: o token se perde, e o usuário cria outro. Sem conta, não há como recuperar | limitação a documentar |
+| P6 | **Domínio "sósia" (homógrafo)**, ex.: `аpple.com` com "а" cirílico. O `new URL()` converte para punycode (`xn--…`). Bloquear exigiria blocklist, fora de escopo | limitação a documentar |
+| P7 | **"Até o fim de hoje" escolhido às 23h50:** o link dura 10 min. Comportamento correto, mas pouco intuitivo | limitação a documentar |
+
 ### 3. Documentação visual no Excalidraw
 
 Está no localStorage do Chrome do Rafael (excalidraw.com). **Ainda não foi exportada para o repositório.** Seções, de cima para baixo, cada uma com um rótulo à esquerda e uma moldura:
@@ -185,6 +234,13 @@ Está no localStorage do Chrome do Rafael (excalidraw.com). **Ainda não foi exp
   4. a recomendação em poucas linhas e uma fonte numa linha só.
   
   Verificação de fontes, roteiros e subdecisões futuras ficam **fora** da mensagem da decisão.
+- **Quando o Rafael pede "explique mais a fundo" depois de decidir** (10b e 10e, em 2026-09-30), funcionou assim:
+  1. uma **analogia do cotidiano** (caixa eletrônico para o rate limit, ligar para um restaurante para o timeout);
+  2. **situações numeradas** (dia normal / banco dormindo / banco fora do ar) com a mesma linha do tempo para A, B e C lado a lado;
+  3. uma **tabela resumo** "situação × opção" com ✓/✗.
+  
+  Ele esclareceu que não é crítica à explicação: quer entender a fundo porque está aprendendo e montando portfólio. Explique com paciência e sem repetir o jargão.
+- **Revisar os documentos procurando defeitos antes da spec.** Ao reler o `domain.md` para listar cenários faltantes, apareceu o SQL atômico sem `deactivated_at`. Vale uma releitura crítica de cada regra antes de escrever a spec.
 - **Debater cada decisão isoladamente, com opções A/B/C, tabela de trade-offs, fonte primária e recomendação.** O Rafael pediu isso explicitamente: ele não escolhe sem entender os prós e contras. Uma decisão por mensagem. Ao final, registrar a decisão no arquivo certo **na hora**, para não perder se a sessão cair.
 - **Analogias com Java/Spring e JPA** (`@OneToMany`/`@ManyToOne`, `@Column(unique = true)`, `@Enumerated`, `Filter`) e exemplos de código curtos.
 - **Verificar fatos de biblioteca antes de afirmar:** context7 para o Prisma (`updateManyAndReturn` desde a 6.2.0, `uuid(7)` desde a 5.18.0) e firecrawl para o OWASP. A documentação do Prisma já mostra a **v7**, então é preciso fixar a versão no setup.
@@ -204,6 +260,7 @@ Está no localStorage do Chrome do Rafael (excalidraw.com). **Ainda não foi exp
 
 ## What Didn't Work (não repetir)
 
+- **Deixar edições sem commit por muito tempo.** Em 2026-09-30, um Ctrl+Z no editor do Rafael desfez parte das edições do `domain.md` (respostas 429/503, mapa de erros, correção do SQL), que ainda não tinham sido commitadas. Tudo foi refeito a partir do histórico da conversa. **Commite ao fim de cada bloco de decisões** (e confira `git diff --stat` antes de retomar).
 - **Mensagem de decisão densa** (2026-09-29, primeira versão da 7a). Abria com uma tabela de verificação de fontes, um diagrama do fluxo e um roteiro de subdecisões, e as opções vinham em jargão ("CTE", "waitUntil", "round trip") dentro de células cheias. O Rafael respondeu: "não entendi nada… verbosa, confusa e nada explicativa". Use o formato de "What Worked".
 - **Gravar no localStorage com a aba do Rafael aberta.** Qualquer interação na aba dele, até rolar a roda do mouse sem dar foco à janela, dispara o salvamento automático e grava por cima a cena antiga que está em memória. Recarregar com F5 também grava por cima. **Sempre fechar primeiro.**
 - **O Rafael reabrir antes de o agente gravar.** A aba nova carrega o estado antigo. A ordem certa é **fechar → agente grava → agente avisa → abrir**.
@@ -227,19 +284,16 @@ Na ordem do processo arquitetural do `superpowers:brainstorming`:
    - ✅ **Route Handler `GET`/`HEAD /[slug]` fechado em 2026-09-29** (decisões 7a a 7e; ver seção 2c);
    - ✅ **Page `/manage/[token]` fechada em 2026-09-29** (8a: janela de 30 dias; 8b: token no path + headers);
    - ✅ premissas `after()` e CSRF das Server Actions verificadas;
-   - **Próximo: Server Action `deactivateLink`** (decisão 9). Pontos candidatos: é idempotente (desativar um link já desativado)? O que a página mostra depois? Precisa de confirmação ("tem certeza?"), já que é irreversível?
-   - **D1 (camada de dados): driver adapter `@prisma/adapter-pg` (TCP, lib `pg`) ou `@prisma/adapter-neon` (driver serverless do Neon)**, com tabela de trade-offs (latência, conexão por invocação, compatibilidade com o pooler). A doc da Vercel cita `attachDatabasePool` (`@vercel/functions`) para pools `pg` no Fluid compute: avaliar junto.
-2. **Tratamento de erros:**
-   - erros de domínio → HTTP;
-   - **rate limiter indisponível: fail-open ou fail-closed**, possivelmente diferente para criação e redirect;
-   - números do rate limit (requisições por janela);
-   - colisão de slug (quantas tentativas);
-   - URL inválida.
+   - ✅ **Server Action `deactivateLink` fechada** (9a: irreversível com confirmação; 9b: idempotente, pelo token);
+   - ✅ **D1: `@prisma/adapter-pg` + `attachDatabasePool`** (seção 2d).
+2. ✅ **Tratamento de erros** fechado em 2026-09-30: 10a a 10e e o mapa de erros (seção 2d).
+   - **Próximo: pauta P1 a P7** (seção 2d), um por mensagem, começando pelo P1.
 3. **Estratégia de testes:**
    - ferramenta (ex.: Vitest);
    - domínio com fakes em memória;
    - funções puras (`classifyDevice`, `extractReferrerHost`, `isPreviewBot`, `SlugGenerator`) com tabela de casos;
-   - o **incremento atômico sob concorrência** precisa de teste com Postgres real.
+   - o **incremento atômico sob concorrência** precisa de teste com Postgres real (o D1 usa `pg`, que funciona com Postgres local em Docker);
+   - candidatos a teste de tabela surgidos em 2026-09-29/30: normalização do IP para `/64` (10c), `isValidSlugFormat` (7e), formato do token (mapa de erros), precedência do motivo do 410 (7d), retry de colisão (10d) e fail-open/closed (10a) com fake do rate limiter.
 4. **Escrever a spec:**
    - arquivo `docs/superpowers/specs/2026-09-XX-short-url-mvp-design.md`, no formato de `.agents/rules/spec-workflow.md`: cabeçalho Data/Status/Branch Alvo, seções numeradas, `## Alternativas consideradas e por que foram descartadas` e `## Requisitos rastreados` com RF/RNF;
    - consolidar tudo de `domain.md`, `security.md`, `architecture.md` e PRD, incluindo a nota sobre o AD-004 e o QR;
@@ -258,11 +312,11 @@ A ordem combinada com o Rafael é **uma decisão por mensagem**. A pauta é: ~~1
 - **Técnicas:**
   - ~~versões de Node, Next.js e Prisma~~: ✅ resolvido (seção 2b);
   - ~~gerenciador de pacotes~~: ✅ **npm 11**, com `.npmrc` (`save-exact`, `min-release-age=1`, `strict-allow-scripts`), `allowScripts` no `package.json` e a regra de lint `import/no-extraneous-dependencies` contra dependência fantasma. O pnpm 11 foi descartado porque a Vercel só documenta até o pnpm 10;
-  - D1, driver adapter (ver Next Steps, item 1);
+  - ~~D1, driver adapter~~: ✅ `@prisma/adapter-pg` + `attachDatabasePool` (seção 2d);
   - ~~convenção de nome de arquivo~~: ✅ kebab-case em tudo (`code-style.md`);
   - ~~padrão de commit~~: ✅ ver `code-style.md`.
 - ~~**Produto:** idioma da interface~~: ✅ pt-BR na UI e no README. O alvo atual são vagas no Brasil; i18n ficou fora de escopo, com o motivo no PRD.
-- **Repositório:** ✅ público em **https://github.com/ribeirorafadev/url-shortener** (remoto `origin` via SSH, `git@github.com:ribeirorafadev/url-shortener.git`; o SSH da máquina já está autenticado como `ribeirorafadev`). `main` está sincronizada com `origin/main` desde 2026-09-28, só com commits de documentação. Confira o último com `git log --oneline -3`. A spec será commitada na branch dela (ex.: `feat/mvp`).
+- **Repositório:** ✅ público em **https://github.com/ribeirorafadev/url-shortener** (remoto `origin` via SSH, `git@github.com:ribeirorafadev/url-shortener.git`; o SSH da máquina já está autenticado como `ribeirorafadev`). `main` está sincronizada com `origin/main`, só com commits de documentação. Confira o último com `git log --oneline -3`. A spec será commitada na branch dela (ex.: `feat/mvp`).
   - **Push:** só com autorização explícita do Rafael na mensagem.
   - **"About" do GitHub:** ✅ configurado pelo Rafael (descrição e topics). O MCP do GitHub não edita metadados de repositório, e o `gh` e a CLI `vercel` não estão instalados.
   - **README:** ainda não existe. O completo é entrega do PRD, no fim. Um README curto provisório foi oferecido e fica a critério do Rafael.

@@ -5,7 +5,7 @@
 - **Baseline de versões (decidida em 2026-09-28):**
   - **Node 24.x** (Active LTS), fixado em `"engines": { "node": "24.x" }`. A Vercel oferece só 24.x (padrão), 22.x e 20.x, e o 20.x fica *deprecated* em 2026-10-01.
   - **Next.js 16.3.6**.
-  - **Prisma 7.10.0**, com `prisma`, `@prisma/client` e o driver adapter fixados na mesma versão exata. A dist-tag `latest` do pacote `prisma` (CLI) apontava para `8.0.0-rc.17` enquanto a de `@prisma/client` apontava para `7.10.0`, então `npm i prisma` sem versão instala um RC incompatível. O Prisma 7 muda três coisas: o driver adapter é obrigatório, o generator `prisma-client` tem `output` explícito (e o client não é mais importado de `@prisma/client`), e a URL do banco vai para `prisma.config.ts`. A escolha do adapter (`@prisma/adapter-neon` ou `@prisma/adapter-pg`) fica para a spec.
+  - **Prisma 7.10.0**, com `prisma`, `@prisma/client` e o driver adapter fixados na mesma versão exata. A dist-tag `latest` do pacote `prisma` (CLI) apontava para `8.0.0-rc.17` enquanto a de `@prisma/client` apontava para `7.10.0`, então `npm i prisma` sem versão instala um RC incompatível. O Prisma 7 muda três coisas: o driver adapter é obrigatório, o generator `prisma-client` tem `output` explícito (e o client não é mais importado de `@prisma/client`), e a URL do banco vai para `prisma.config.ts`. O adapter escolhido é o `@prisma/adapter-pg` (ver "Persistência").
   - **TypeScript 6.0.3**, não 7.x. O TS 7 (nativo, em Go) ainda não tem API JavaScript (prevista para a 7.1), e o `typescript-eslint@8.70.1`, dependência do `eslint-config-next`, declara o peer `typescript <6.1.0`. Migrar para o 7 depois é só subir uma devDependency.
   - **`.npmrc` com `save-exact=true`** e o lockfile commitado.
 - **Gerenciador de pacotes: npm 11 com endurecimento de supply chain (decidido em 2026-09-28).**
@@ -18,6 +18,15 @@
 - Persistência: Neon (PostgreSQL serverless) via Prisma (AD-002). No Prisma 7, quem envia o SQL ao banco é um **driver adapter**, plugado no `PrismaClient` (papel equivalente ao do driver JDBC no Spring). O Neon expõe **duas conexões**:
   - **pooled** (host com `-pooler`, via PgBouncer), em `DATABASE_URL`: usada pela aplicação em runtime, porque cada função serverless abre a própria conexão e o pooler reparte poucas conexões reais entre elas;
   - **direct** (host sem `-pooler`), em `DIRECT_URL`: usada só pela CLI (`prisma migrate`), que precisa da mesma conexão do início ao fim para segurar o lock de migration. Fica configurada em `prisma.config.ts`.
+  - **Driver adapter (D1, decidido em 2026-09-29): `@prisma/adapter-pg`** (TCP, lib `pg`) com **um `pg.Pool` no escopo global** de `src/data/`, registrado com **`attachDatabasePool` de `@vercel/functions`** e passado ao `PrismaPg` (o construtor da 7.10.0 aceita `pg.Pool | pg.PoolConfig | string`).
+    - Motivo: com Fluid compute, a mesma instância atende vários requests, então a conexão aberta no primeiro é reaproveitada nos seguintes. O `attachDatabasePool` usa o `waitUntil` para fechar as conexões ociosas antes de a instância ser suspensa, o que evita vazamento de conexão.
+    - Fontes: Neon, "Connecting to Neon from Vercel" ("With Vercel Fluid, we recommend you use a standard Postgres TCP connection […] and a connection pool") e o guia da Vercel "Connection Pooling with Vercel Functions".
+    - **`idleTimeoutMillis: 5000`**, como recomenda o guia da Vercel ("a relatively short idle timeout (e.g., 5 seconds)"). O padrão do `pg` no Prisma 7 é 10 s.
+    - **`connectionTimeoutMillis: 5000` (decidido em 2026-09-30).** O padrão é **0, que significa esperar para sempre** (doc de connection pool do Prisma v7). Nesse campo, o `pg` junta o tempo para abrir a conexão e o tempo para pegar uma conexão livre do pool.
+      - Os 5 s cobrem com folga o *scale to zero* do Neon (acorda em "algumas centenas de milissegundos", doc "Scale to Zero") mais o handshake TCP/TLS.
+      - Se o tempo estourar, o redirect responde `503` e a criação devolve erro (ver `domain.md`, "Respostas do redirect").
+      - Descartados: sem timeout (5 minutos de tela em branco até a Vercel matar a função, e funções presas acumulando) e 1 s (o primeiro clique depois de o Neon dormir poderia falhar à toa).
+    - Descartado: `@prisma/adapter-neon` (WebSocket). Ele abre a conexão mais rápido (~4 idas e voltas contra ~8 do TCP), mas abre e fecha a cada request. O próprio Neon o recomenda só para serverless sem Fluid. Também prenderia o projeto ao Neon e complicaria o teste com Postgres local.
 - Upstash Redis só para os contadores de rate limit (`@upstash/ratelimit`); os eventos de clique e o analytics ficam no Postgres.
 - QR code: biblioteca `qrcode`, com geração local e sem API externa. É usada só na camada de entrada (ver abaixo).
 - Build/bundler: o do próprio Next.js.
