@@ -26,8 +26,18 @@ Glossário, regras de negócio e fluxos já decididos. O schema de dados está *
   - **R4.** O host tem que ser público. Rejeita `localhost`, loopback, IPs privados, link-local e hosts sem ponto (`http://intranet`). O servidor nunca acessa o destino, então não há SSRF; o risco é o link mandar o navegador da vítima para a rede interna dela, como o painel do roteador (CSRF contra roteadores domésticos).
   - **R5.** No máximo **2048 caracteres**, medidos na URL normalizada (`url.href`). Cobre URLs reais (UTM, URLs pré-assinadas) e mantém o header `Location` do 302 bem abaixo dos buffers de 4 a 8 KB de proxies comuns. Descartado: 8000, o mínimo que a RFC 9110, §4.1, recomenda suportar, porque um `Location` desse tamanho pode estourar o buffer de um proxy corporativo e virar 502 para o visitante.
   - **R6.** Entrada sem protocolo recebe `https://` na frente (`exemplo.com/promo` → `https://exemplo.com/promo`), e o resultado passa por todas as regras. `localhost:3000` continua rejeitada, porque o parser lê `localhost:` como protocolo e ela cai na R1.
-  - Fora de escopo (PRD): blocklist de URLs maliciosas e bloqueio de outros encurtadores.
-  - **Domínios internacionalizados (IDN) e ataque homógrafo (P6, decidido em 2026-09-30): aceitos, com limitação documentada.** O `new URL()` converte o host para punycode (`аpple.com` com "а" cirílico → `xn--pple-43d.com`). O navegador de quem clica denuncia o disfarce: o Chrome exibe punycode quando detecta mistura de alfabetos ou um domínio inteiro de letras sósias (doc "IDN in Google Chrome"). Descartados: recusar mistura de alfabetos, que fica como **evolução** (ganho pequeno, porque o golpe mais comum usa só letras latinas, como `paypa1.com`), e aceitar só ASCII, que barraria domínios `.br` legítimos com acento.
+  - **R7. A URL não pode estar na blocklist do Google Safe Browsing (incluída no MVP em 2026-09-30).** É checada **só na criação**, depois de R1 a R6 passarem. O redirect não faz consulta externa.
+    - **Porta do domínio:** a interface `UrlThreatChecker` (ex.: `check(url): Promise<'safe' | 'dangerous'>`) é injetada no construtor do `LinkService`, como o `LinkRepository`. O domínio não sabe que é o Google. Os testes usam um fake em memória.
+    - **Adaptador:** Safe Browsing **v5, modo "No-Storage Real-Time", endpoint `hashes.search`**. O adaptador canonicaliza a URL conforme a spec do Google, gera as expressões de host e caminho, calcula o SHA-256 de cada uma e envia **só prefixos de 4 bytes**; depois compara localmente os hashes completos que voltam. **A URL nunca sai do servidor**, o que é coerente com o `security.md` (URLs de destino podem conter dados privados). Sem cache local obrigatório. Usa `fetch` e `crypto.subtle` nativos, **sem dependência nova**.
+    - **Termos:** uso gratuito e **não comercial** (doc "Appropriate Usage"). Ao avisar o usuário, é obrigatório atribuir: "Advisory provided by Google", com link para o Safe Browsing Advisory.
+    - Descartados:
+      - `urls.search`, que envia a URL inteira e ainda é `v5alpha1`;
+      - Google Web Risk, que envia a URL inteira e é voltado a uso comercial com faturamento;
+      - URLhaus, que foca em malware, não em phishing, e exige Auth-Key.
+    - **Limitações:** só pega o que o Google já conhece (golpe recém-criado passa). Um site que vira golpe depois da criação não é pego; a reverificação periódica é evolução (PRD).
+    - **Pendentes (decidir na sequência):** B1, o que fazer se o serviço estiver fora do ar ou a cota acabar; B2, onde fica o adaptador (`src/infra/` ou `src/data/`); B3, texto da mensagem de bloqueio e posição da atribuição.
+  - Fora de escopo (PRD): bloqueio de outros encurtadores e reverificação periódica dos links já criados.
+  - **Domínios internacionalizados (IDN) e ataque homógrafo (P6, decidido em 2026-09-30): aceitos, com limitação documentada.** O `new URL()` converte o host para punycode (`аpple.com` com "а" cirílico → `xn--pple-43d.com`). O navegador de quem clica denuncia o disfarce: o Chrome exibe punycode quando detecta mistura de alfabetos ou um domínio inteiro de letras sósias (doc "IDN in Google Chrome"). Descartados: recusar mistura de alfabetos, que fica como **evolução** (ganho pequeno, porque o golpe mais comum usa só letras latinas, como `paypa1.com`, que só a blocklist da R7 pode pegar), e aceitar só ASCII, que barraria domínios `.br` legítimos com acento.
 - **Limite de cliques e expiração**: opcionais. O padrão é sem limite e sem expiração. São funcionalidades de produto (link de uso único, campanha com prazo), **não** proteção. A proteção é o rate limiting. Os dois podem ser combinados. Regras decididas em 2026-09-28 (a borda converte as strings do `FormData` em tipos, e o `LinkService` valida):
   - **Limite de cliques:** inteiro entre **1 e 1.000.000**, com conversão estrita (`/^\d+$/` antes do `Number()`), então `"10abc"`, `"1e3"`, `"-5"` e `"2.5"` são rejeitados. O teto evita que um valor acima do `int` do Postgres (2.147.483.647) vire erro 500 em vez de erro de validação, e 1 milhão cobre qualquer campanha realista.
   - **Expiração:** o usuário escolhe uma **duração pronta** (1 h, 24 h, 7 dias ou 30 dias, e o servidor calcula `agora + duração`) **ou "até o fim do dia X"**, com um seletor só de data. Esse dia é interpretado em `America/Sao_Paulo`, o mesmo conceito de "dia" do dashboard: "fim do dia 30/10" vira `2026-10-30T23:59:59.999-03:00`.
@@ -110,7 +120,7 @@ Quando um link curto é colado no WhatsApp, Slack, Telegram, X, Facebook, Linked
 
 ## Fluxos
 
-1. **Criar link**: formulário → Server Action → rate limit (10/min e 100/dia por IP; Upstash fora → erro, fail-closed) → validação da URL → gera slug e token → grava via Prisma (colisão de slug → sorteia de novo, até 3 tentativas) → o domínio devolve o link curto e o token → a Server Action gera o QR code (camada de entrada) → devolve o estado `success` com o link curto, o link de gestão e o QR, exibidos uma única vez no card de resultado.
+1. **Criar link**: formulário → Server Action → rate limit (10/min e 100/dia por IP; Upstash fora → erro, fail-closed) → validação da URL (R1 a R6) → R7: consulta o Google Safe Browsing (só prefixos de hash) → gera slug e token → grava via Prisma (colisão de slug → sorteia de novo, até 3 tentativas) → o domínio devolve o link curto e o token → a Server Action gera o QR code (camada de entrada) → devolve o estado `success` com o link curto, o link de gestão e o QR, exibidos uma única vez no card de resultado.
 2. **Redirecionar** (caminho mais quente, com leituras ~100× mais frequentes que escritas). Route Handler `src/app/[slug]/route.ts`, que exporta `GET` e `HEAD`:
    ```
    1. isValidSlugFormat(slug) falhou → 404 (sem Upstash nem banco)
@@ -181,6 +191,7 @@ Princípio: mensagem clara para o usuário, **nenhum detalhe interno** (stack tr
 | `url` | R2: usuário e senha na URL | Links com usuário e senha embutidos não são aceitos. | domínio |
 | `url` | R3: próprio domínio | Não é possível encurtar um link deste próprio encurtador. | domínio |
 | `url` | R4: host não público | O destino precisa ser um site público. | domínio |
+| `url` | R7: listada no Safe Browsing | *Texto e atribuição ao Google a decidir (B3).* | domínio (via `UrlThreatChecker`) |
 | `maxClicks` | não é inteiro (`10abc`, `2.5`, `-5`, `1e3`) | Informe um número inteiro, sem letras ou casas decimais. | entrada |
 | `maxClicks` | fora de 1 a 1.000.000 | O limite deve ficar entre 1 e 1.000.000 cliques. | domínio |
 | `expiration` | data inválida (`2026-02-30`) | Data inválida. | entrada |
@@ -199,6 +210,7 @@ Princípio: mensagem clara para o usuário, **nenhum detalhe interno** (stack tr
 | Rate limit diário | Você atingiu o limite de links por hoje. Tente amanhã. | não |
 | Upstash indisponível (fail-closed) | Não foi possível criar o link agora. Tente em alguns minutos. | sim |
 | Banco lento ou fora (timeout de 5 s) | *(a mesma acima)* | sim |
+| Safe Browsing fora do ar ou cota esgotada | *A decidir (B1)* | sim |
 | 3 colisões de slug seguidas | *(a mesma acima)* | sim, como erro |
 | Erro inesperado | Algo deu errado. Tente novamente. | sim |
 

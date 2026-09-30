@@ -7,12 +7,12 @@
   - as URLs de destino, que podem carregar dados privados em query string;
   - os metadados de clique (user-agent, referrer);
   - o IP do visitante, usado como chave de rate limit. IP é dado pessoal pela LGPD.
-- Dependências externas críticas: Neon (Postgres), Upstash (Redis de rate limit) e Vercel (hosting e edge).
+- Dependências externas críticas: Neon (Postgres), Upstash (Redis de rate limit), Vercel (hosting e edge) e Google Safe Browsing (blocklist da R7, só na criação).
 
 ## Ameaças consideradas e mitigação
 - **DDoS volumétrico**: tratado pela proteção de infraestrutura da edge da Vercel, antes de o tráfego chegar às funções. Não é problema do código da aplicação.
 - **Abuso funcional** (criação de links em massa, inflar cliques): rate limit por IP na camada de entrada, antes do domínio e do banco.
-- **Phishing e redirect malicioso**: a URL de destino é validada pelas regras R1 a R6 de `domain.md`. Só aceita `http:`/`https:`; rejeita credenciais embutidas (`https://banco.com@evil.com`), o próprio domínio (encadeamento e loop) e hosts não públicos (localhost e IPs privados, contra CSRF na rede interna do visitante); limita o tamanho a 2048 caracteres. O link pode ser desativado.
+- **Phishing e redirect malicioso**: a URL de destino é validada pelas regras R1 a R7 de `domain.md`. Só aceita `http:`/`https:`; rejeita credenciais embutidas (`https://banco.com@evil.com`), o próprio domínio (encadeamento e loop) e hosts não públicos (localhost e IPs privados, contra CSRF na rede interna do visitante); limita o tamanho a 2048 caracteres. **R7:** recusa URLs listadas no Google Safe Browsing (ver "Blocklist"). O link pode ser desativado.
 - **Enumeração de links**: slug aleatório via CSPRNG, nunca sequencial.
 - **SQL injection**: acesso só via Prisma, sem concatenação.
 - **Race condition no limite de cliques**: checagem e incremento numa única operação atômica.
@@ -22,7 +22,7 @@
 
 ## Política
 - Todo input externo é hostil até prova em contrário. O formato é validado na borda (entrada), e as regras de negócio são revalidadas no domínio.
-- Segredos (`DATABASE_URL` e `DIRECT_URL`, as duas connection strings do Neon, e os tokens do Upstash) só via variáveis de ambiente (Vercel em produção, `.env.local` em dev). Nunca hardcoded nem commitados: o `.gitignore` ignora `.env*`, exceto `.env.example`.
+- Segredos (`DATABASE_URL` e `DIRECT_URL`, as duas connection strings do Neon, os tokens do Upstash e a `SAFE_BROWSING_API_KEY`) só via variáveis de ambiente (Vercel em produção, `.env.local` em dev). Nunca hardcoded nem commitados: o `.gitignore` ignora `.env*`, exceto `.env.example`.
 - O **`.npmrc` do projeto é versionado**, porque guarda as regras de supply chain, e por isso **nunca pode conter token de registry** (`//registry.npmjs.org/:_authToken=`). Credenciais do npm ficam só no `~/.npmrc` do usuário.
 - **Artefatos de teste são ignorados** (`test-results/`, `playwright-report/`, `.playwright-mcp/`): screenshots e traces do fluxo de gestão podem conter a URL com o token.
 - Nenhum `catch` silencioso. Erros esperados (URL inválida, link inexistente ou expirado) viram resposta HTTP explícita; os inesperados são logados sem vazar token nem segredo.
@@ -71,3 +71,17 @@ Vale para Upstash fora do ar, erro de rede, cota esgotada ou timeout. O comporta
   - na criação, `reason === "timeout"` é tratado como falha (fail-closed).
 - Descartados: fail-open nos dois (spam de criação durante a queda) e fail-closed nos dois (todos os links param por causa do Upstash).
 
+## Blocklist: Google Safe Browsing (R7, incluída no MVP em 2026-09-30)
+Regra de negócio em `domain.md` (R7). Aqui ficam os aspectos de segurança, privacidade e custo, verificados na documentação do Google em 2026-09-30:
+- **Privacidade:** o adaptador usa o `hashes.search` da v5 e envia **só prefixos de 4 bytes do SHA-256**, nunca a URL. A comparação final é feita no nosso servidor. É a mesma política de minimização aplicada ao IP (LGPD, art. 6º, III).
+- **Custo:** gratuito. "All use of Safe Browsing APIs is free of charge" (doc "Pricing") e "There is no cost for use of this API" (doc "Usage Restrictions"). Os termos são de **uso não comercial**; se o produto virar comercial, migrar para o Google Web Risk (mesma porta do domínio, só troca o adaptador).
+- **Cota:** a documentação **não publica o número**. A cota padrão aparece no Google Cloud Console depois de ativar a API, e dá para pedir aumento sem custo. Fontes de terceiros citam 10 mil consultas por dia (não é número oficial). O consumo esperado é baixo: só a criação consulta, e ela já é limitada a 100 por dia por IP (10b).
+- **Configuração (feita pelo Rafael):** conta Google → projeto no Google Cloud Console → criar a API key → ativar a "Safe Browsing API" (doc "Get started"). O passo a passo não pede conta de faturamento.
+- **API key:**
+  - só no servidor, via variável de ambiente `SAFE_BROWSING_API_KEY` (nunca no cliente nem em `NEXT_PUBLIC_*`);
+  - **restrita no console à Safe Browsing API**, para uma chave vazada não servir para outras APIs do projeto;
+  - vai na query string da chamada ao Google (`?key=`), então **nunca logar a URL da requisição** ao Google.
+- **Pendentes:**
+  - B1: serviço fora do ar ou cota esgotada (fail-open ou fail-closed);
+  - B2: pasta do adaptador;
+  - B3: mensagem de bloqueio com a atribuição obrigatória "Advisory provided by Google".

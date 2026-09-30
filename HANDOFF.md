@@ -12,15 +12,17 @@
   - **D1:** driver adapter;
   - **10a a 10e:** tratamento de erros (rate limiter fora do ar, números, IPv6, colisão de slug, timeout do banco);
   - **mapa de erros** aprovado;
-  - correção de um defeito no SQL atômico (seções 2c e 2d).
+  - correção de um defeito no SQL atômico (seções 2c e 2d);
+  - **P1 a P6** decididos;
+  - **blocklist (Google Safe Browsing, regra R7) incluída no MVP** (seção 2e).
 
 **Fase atual:** design, seguindo `superpowers:brainstorming` pelo **caminho arquitetural**. **Nenhum código foi escrito, e isso é intencional.** O hard-gate da skill só libera a implementação depois de três passos: spec escrita e aprovada, plano (`superpowers:writing-plans`) aprovado e método de execução escolhido.
-**Próxima etapa:** debater os **7 cenários pendentes (P1 a P7, seção 2d)**, **um por mensagem, começando pelo P1** (falha depois de gravar: o token se perde). O Rafael pediu para debater os 7 antes de seguir para a estratégia de testes.
+**Próxima etapa:** as **3 decisões da blocklist (B1 a B3, seção 2e)**, uma por mensagem, começando pela **B1** (Safe Browsing fora do ar). Depois, o **P7** (último da pauta, seção 2d). Depois, a estratégia de testes.
 
 ### Como retomar (primeiros passos da nova sessão)
 1. `git status -sb` deve mostrar `main...origin/main` sem pendências. Se houver algo, pergunte ao Rafael antes de mexer.
 2. Invoque `superpowers:brainstorming`: a sessão continua no **caminho arquitetural**, na etapa "apresentar o design em seções". Nada de código antes da spec e do plano aprovados.
-3. Apresente o **P1** no formato de "What Worked": cenário concreto, cada opção em 1–2 frases com uma mini linha do tempo, tabela curta sem jargão, recomendação. Registre no arquivo certo assim que o Rafael fechar, e siga para o P2.
+3. Apresente a **B1** no formato de "What Worked": cenário concreto, cada opção em 1–2 frases com uma mini linha do tempo, tabela curta sem jargão, recomendação. Registre no arquivo certo assim que o Rafael fechar, e siga para B2, B3 e P7.
 4. Depois do P7, siga a ordem dos Next Steps: estratégia de testes → spec.
 5. **Commite e dê push ao fim de cada bloco de decisões** (com autorização do Rafael). Em 2026-09-30, um Ctrl+Z no editor desfez edições ainda não commitadas (ver "What Didn't Work").
 
@@ -36,12 +38,12 @@ O escopo do MVP, o que ficou fora de escopo e o critério de "pronto" estão em 
 
 | Arquivo | Conteúdo |
 |---|---|
-| `docs/superpowers/PRD.md` | Problema, público, escopo do MVP (inclui **idioma pt-BR**), **fora de escopo** (inclui alias, edição de destino e i18n, com os motivos) e critério de "pronto" |
+| `docs/superpowers/PRD.md` | Problema, público, escopo do MVP (inclui **idioma pt-BR**, **blocklist R7** e **QR na página de gestão**), **fora de escopo** (inclui alias, edição de destino, i18n e reverificação periódica, com os motivos) e critério de "pronto" |
 | `docs/superpowers/ADR.md` | AD-001 a AD-004. É append-only: **nunca editar** |
 | `.agents/rules/architecture.md` | Stack, **baseline de versões**, **npm endurecido** (e por que não pnpm/bun), conexões pooled/direct do Neon, **driver adapter `@prisma/adapter-pg` com `attachDatabasePool` e os timeouts do pool (D1, 10e)**, camadas, pastas (client Prisma gerado em `src/data/generated/prisma/`) e decisões não negociáveis. O QR code fica na camada de entrada |
 | `.agents/rules/code-style.md` | Lint (restrição do TS 6, `import/no-extraneous-dependencies`, candidata `no-restricted-imports`), **arquivos em kebab-case**, **padrão de commit** e branches |
-| `.agents/rules/security.md` | Ameaças (phishing com R1 a R6), política (segredos, **`.npmrc` sem token**, artefatos de teste ignorados), ameaças novas de 2026-09-29 (HEAD/bots, varredura de caminhos, **CSRF das Server Actions**), **decidido** (hash e formato do token, IP não persistido), **vazamentos do token** (Referer mitigado, logs e histórico aceitos), **números do rate limit e chave `/64` no IPv6 (10b, 10c)** e **rate limiter indisponível: fail-open no redirect, fail-closed na criação (10a)** |
-| `.agents/context/domain.md` | Glossário, regras de negócio (**validação R1 a R6**, **limite e expiração**, **colisão de slug**, **pré-validação do slug**, **respostas 302/404/410/429/503 e páginas do redirect**, **SQL atômico corrigido**, **registro com `after()`**, **token e contrato da `createLink`**, QR), **bots de preview e `HEAD`**, fluxos (criação e redirect passo a passo), **modelo de dados completo**, **página de gestão** (janela, desativação irreversível e idempotente) e **mapa de erros** |
+| `.agents/rules/security.md` | Ameaças (phishing com R1 a R7), política (segredos, **`.npmrc` sem token**, artefatos de teste ignorados), ameaças novas de 2026-09-29 (HEAD/bots, varredura de caminhos, **CSRF das Server Actions**), **decidido** (hash e formato do token, IP não persistido), **vazamentos do token** (Referer mitigado, logs e histórico aceitos), **números do rate limit e chave `/64` no IPv6 (10b, 10c)**, **rate limiter indisponível: fail-open no redirect, fail-closed na criação (10a)** e **blocklist do Safe Browsing: privacidade, custo, cota e API key** |
+| `.agents/context/domain.md` | Glossário, regras de negócio (**validação R1 a R7**, **`trim()` (P4)**, **IDN/homógrafo (P6)**, **limite e expiração**, **colisão de slug**, **pré-validação do slug**, **respostas 302/404/410/429/503 e páginas do redirect**, **SQL atômico corrigido**, **registro com `after()`**, **token e contrato da `createLink`** (QR opcional, P1; duplo envio, P3; perda do token, P5), **parâmetros ignorados (P2)**, QR), **bots de preview e `HEAD`**, fluxos (criação e redirect passo a passo), **modelo de dados completo**, **página de gestão** (janela, desativação irreversível e idempotente) e **mapa de erros** |
 | `.gitignore` | Por seções; ignora `.env*` (exceto `.env.example`), chaves e certificados, o client gerado do Prisma e os artefatos de teste (`.playwright-mcp/`, `test-results/`) |
 | Excalidraw (navegador do Rafael) | Documentação visual (ver seção 3) |
 
@@ -199,8 +201,40 @@ O ADR não mudou. O 8b é o caso mais próximo, porque mudar o formato da URL de
 | P3 | **Duplo clique no "Encurtar"** criaria 2 links. Proposta: botão desabilitado enquanto `isPending` (`useActionState`) | ✅ **B** (2026-09-30): botão desabilitado com `isPending`; ver `domain.md` |
 | P4 | **Espaços colados junto com a URL.** Proposta: `trim()` na entrada antes de validar | ✅ **B** (2026-09-30): `trim()` nas pontas de todos os campos; ver `domain.md` |
 | P5 | **Resposta perdida na rede** depois de gravar: o token se perde, e o usuário cria outro. Sem conta, não há como recuperar | ✅ **B + C** (2026-09-30): destaque no card + `beforeunload` até copiar o link de gestão; perda na rede documentada. Ver `domain.md` |
-| P6 | **Domínio "sósia" (homógrafo)**, ex.: `аpple.com` com "а" cirílico. O `new URL()` converte para punycode (`xn--…`). Bloquear exigiria blocklist, fora de escopo | ✅ **A** (2026-09-30): aceitar e documentar (o Chrome mostra punycode); recusar mistura de alfabetos é evolução. Ver `domain.md` |
+| P6 | **Domínio "sósia" (homógrafo)**, ex.: `аpple.com` com "а" cirílico. O `new URL()` converte para punycode (`xn--…`). Bloquear exigiria blocklist (na época fora de escopo; depois virou a R7, seção 2e) | ✅ **A** (2026-09-30): aceitar e documentar (o Chrome mostra punycode); recusar mistura de alfabetos é evolução. Ver `domain.md` |
 | P7 | **"Até o fim de hoje" escolhido às 23h50:** o link dura 10 min. Comportamento correto, mas pouco intuitivo | limitação a documentar |
+
+**Situação da pauta P:** P1 a P6 ✅ decididos e commitados (`bfe5fad`). **Falta o P7**, que fica para depois das decisões B1 a B3 da seção 2e.
+
+### 2e. Blocklist no MVP (decidido em 2026-09-30)
+
+O Rafael perguntou se valia incluir a blocklist, que o PRD deixava como evolução. Foi feita uma análise com varredura dos arquivos, e ele **decidiu incluí-la no MVP** como **regra R7**. Motivos:
+- protege quem clica;
+- protege **o próprio domínio da demo**, que poderia ser marcado como perigoso por navegadores e filtros de e-mail se redirecionasse para golpes (o recrutador veria a tela vermelha);
+- é um bom assunto de entrevista.
+
+**Como ficou (registrado em `domain.md` R7, `security.md` "Blocklist", `architecture.md` e PRD):**
+- **Só na criação**, depois de R1 a R6. O redirect não muda e não faz consulta externa.
+- **Google Safe Browsing v5, `hashes.search`** (modo "No-Storage Real-Time"). O adaptador envia **só prefixos de 4 bytes do SHA-256**, nunca a URL; a comparação final é local. A parte trabalhosa é a **canonicalização da URL** conforme a spec do Google, coberta com testes de tabela usando os exemplos da documentação.
+- **Porta do domínio `UrlThreatChecker`**, injetada no `LinkService` (mesmo padrão do `LinkRepository`), com fake em memória nos testes. **Sem dependência nova** (`fetch` e `crypto.subtle` nativos). A arquitetura não muda.
+- **Custo: gratuito**, conferido nas docs "Pricing" e "Usage Restrictions". Termos de **uso não comercial**; se virar produto pago, trocar o adaptador pelo Google Web Risk.
+- **Cota:** a documentação não publica o número; ele aparece no Cloud Console depois de ativar a API, e o aumento pode ser pedido sem custo. Terceiros citam 10 mil por dia (não oficial). O consumo é baixo, porque só a criação consulta, e ela é limitada a 100 por dia por IP.
+- **Configuração (o Rafael faz, antes da implementação):** conta Google → projeto no Google Cloud Console → API key → ativar a "Safe Browsing API". O passo a passo não pede faturamento. **Restringir a key à Safe Browsing API** no console.
+- **Segredo novo:** `SAFE_BROWSING_API_KEY`, só no servidor. A key vai na query string da chamada ao Google, então **nunca logar a URL dessa requisição**.
+- **Atribuição obrigatória** ao bloquear: "Advisory provided by Google", com link para o Safe Browsing Advisory (doc "Appropriate Usage").
+- **Fora do MVP (evolução):** reverificação periódica dos links já criados; recusar mistura de alfabetos (P6).
+- Descartados: `urls.search` (envia a URL e é alfa), Web Risk (envia a URL e é comercial) e URLhaus (malware, não phishing).
+- **ADR:** não muda, porque não passa no critério "difícil de reverter".
+
+**Pendentes da blocklist (próximas decisões, uma por mensagem):**
+
+| # | Decisão | Contexto |
+|---|---|---|
+| B1 | Safe Browsing fora do ar, lento ou com cota esgotada | Fail-open (cria sem checar) ou fail-closed (recusa a criação, como no rate limit da 10a)? Timeout da chamada |
+| B2 | Pasta do adaptador | `src/infra/` (integrações externas) ou dentro de `src/data/`, que hoje é "o único lugar que importa Prisma" |
+| B3 | Mensagem de bloqueio | Texto em pt-BR, posição da atribuição "Advisory provided by Google" e o link. A linha no mapa de erros do `domain.md` está como "a decidir" |
+
+**Pendente visual:** no Excalidraw, a seção SYSTEM DESIGN precisa de uma caixa externa "Google Safe Browsing" ligada ao domínio (só com o pedido explícito do Rafael, ver "What Didn't Work").
 
 ### 3. Documentação visual no Excalidraw
 
@@ -287,17 +321,21 @@ Na ordem do processo arquitetural do `superpowers:brainstorming`:
    - ✅ **Server Action `deactivateLink` fechada** (9a: irreversível com confirmação; 9b: idempotente, pelo token);
    - ✅ **D1: `@prisma/adapter-pg` + `attachDatabasePool`** (seção 2d).
 2. ✅ **Tratamento de erros** fechado em 2026-09-30: 10a a 10e e o mapa de erros (seção 2d).
-   - **Próximo: pauta P1 a P7** (seção 2d), um por mensagem, começando pelo P1.
+   - ✅ pauta P1 a P6 (seção 2d);
+   - ✅ blocklist incluída no MVP como R7 (seção 2e);
+   - **Próximo: B1 → B2 → B3** (seção 2e) **→ P7** (seção 2d), um por mensagem.
 3. **Estratégia de testes:**
    - ferramenta (ex.: Vitest);
    - domínio com fakes em memória;
    - funções puras (`classifyDevice`, `extractReferrerHost`, `isPreviewBot`, `SlugGenerator`) com tabela de casos;
    - o **incremento atômico sob concorrência** precisa de teste com Postgres real (o D1 usa `pg`, que funciona com Postgres local em Docker);
-   - candidatos a teste de tabela surgidos em 2026-09-29/30: normalização do IP para `/64` (10c), `isValidSlugFormat` (7e), formato do token (mapa de erros), precedência do motivo do 410 (7d), retry de colisão (10d) e fail-open/closed (10a) com fake do rate limiter.
+   - candidatos a teste de tabela surgidos em 2026-09-29/30: normalização do IP para `/64` (10c), `isValidSlugFormat` (7e), formato do token (mapa de erros), precedência do motivo do 410 (7d), retry de colisão (10d), fail-open/closed (10a) com fake do rate limiter, `trim()` (P4) e **canonicalização do Safe Browsing (R7)**, com os exemplos da documentação do Google como tabela de casos;
+   - R7 no domínio com fake do `UrlThreatChecker` (seguro, perigoso, fora do ar).
 4. **Escrever a spec:**
    - arquivo `docs/superpowers/specs/2026-09-XX-short-url-mvp-design.md`, no formato de `.agents/rules/spec-workflow.md`: cabeçalho Data/Status/Branch Alvo, seções numeradas, `## Alternativas consideradas e por que foram descartadas` e `## Requisitos rastreados` com RF/RNF;
    - consolidar tudo de `domain.md`, `security.md`, `architecture.md` e PRD, incluindo a nota sobre o AD-004 e o QR;
-   - incluir os itens de setup que vieram da baseline e do npm: `.npmrc` com `save-exact=true`, `min-release-age=1` e `strict-allow-scripts=true`, `allowScripts` no `package.json`, regra `import/no-extraneous-dependencies`, `engines.node`, o script `prisma generate && next build`, o `.env.example` com `DATABASE_URL` e `DIRECT_URL`, e instalação sempre com versão explícita;
+   - incluir os itens de setup que vieram da baseline e do npm: `.npmrc` com `save-exact=true`, `min-release-age=1` e `strict-allow-scripts=true`, `allowScripts` no `package.json`, regra `import/no-extraneous-dependencies`, `engines.node`, o script `prisma generate && next build`, o `.env.example` com `DATABASE_URL`, `DIRECT_URL`, os tokens do Upstash e a `SAFE_BROWSING_API_KEY`, e instalação sempre com versão explícita;
+   - pré-requisito externo: o Rafael cria o projeto no Google Cloud e a API key restrita à Safe Browsing API (seção 2e);
    - adicionar a linha em `specs/README.md`;
    - autorrevisão;
    - pedir a revisão do Rafael.

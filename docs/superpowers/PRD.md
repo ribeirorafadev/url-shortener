@@ -23,7 +23,8 @@ O produto precisa funcionar de verdade, com deploy público: um encurtador de UR
 - Redirecionamento rápido (HTTP 302), registrando o clique com dispositivo, referrer e data.
 - Página de gestão (`/manage/[token]`) com estatísticas agregadas por dispositivo, referrer e dia, o QR code do link para baixar de novo e a opção de desativar o link.
 - Rate limiting na criação e no redirecionamento.
-- Validação da URL de destino: só `http`/`https`.
+- Validação da URL de destino: só `http`/`https`, mais as regras R2 a R6 de `domain.md`.
+- **Checagem de URL maliciosa na criação (R7)**, contra a blocklist do Google Safe Browsing (incluída no MVP em 2026-09-30). Protege quem clica e o próprio domínio da demo, que poderia ser marcado como perigoso se redirecionasse para golpes.
 - **Idioma: pt-BR** na interface e no README, porque o alvo atual do portfólio são vagas no Brasil (decidido em 2026-09-28). É coerente com o fuso fixo em `America/Sao_Paulo` e com os textos já definidos (rótulo do gráfico, card neutro para bots). Os identificadores de código ficam em inglês.
 
 ## Fora de escopo
@@ -32,7 +33,8 @@ O produto precisa funcionar de verdade, com deploy público: um encurtador de UR
 - Cache de redirecionamento e Redis para analytics (YAGNI no volume de portfólio). O README documenta isso como evolução em "como escalaria".
 - Agregação ou retenção de eventos de clique antigos (evolução documentada).
 - Geolocalização de cliques (país/cidade). O analytics do MVP cobre dispositivo, referrer e data.
-- Checagem de URL maliciosa contra blocklist externa, como Google Safe Browsing (evolução documentada).
+- **Reverificação periódica** dos links já criados contra a blocklist (evolução documentada). O MVP checa só na criação; um site que vira golpe depois não é pego.
+- Recusar domínios com mistura de alfabetos (homógrafos, P6): evolução documentada.
 - Funcionalidades em tempo real (WebSocket).
 - **Internacionalização (i18n).** O App Router não tem i18n embutido: o caminho oficial é um segmento `app/[lang]/` mais um redirect no `proxy.ts`. Aqui, o `[lang]` colidiria com o `[slug]` na raiz, e o redirect de idioma acrescentaria um salto ao redirect do link curto, que é o caminho mais quente. Se o alvo passar a incluir vagas internacionais, reavaliar começando pelo README, que não tem custo no código.
 - API pública para terceiros: a API existe só para servir a própria aplicação (premissa do AD-001).
@@ -51,6 +53,7 @@ O produto precisa funcionar de verdade, com deploy público: um encurtador de UR
 - Slug inexistente responde 404. Link expirado, esgotado ou desativado responde 410.
 - O limite de cliques é respeitado sob requisições concorrentes (incremento atômico no banco).
 - Rate limiting ativo na criação e no redirecionamento.
+- URL listada no Google Safe Browsing é recusada na criação.
 - Testes automatizados da camada de domínio passando (ferramenta a definir na spec).
 - README com descrição, stack, diagrama de system design, link para o ADR, seção "como escalaria" e instruções para rodar localmente.
 - Tudo entregue em cerca de 1 semana de trabalho.
