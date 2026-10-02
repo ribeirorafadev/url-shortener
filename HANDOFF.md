@@ -4,7 +4,7 @@
 
 **Fase:** design pelo **caminho arquitetural** do `superpowers:brainstorming`. **Nenhum código escrito, de propósito.** O hard-gate só libera código depois de: spec escrita e aprovada → os **três planos** (`superpowers:writing-plans`, um por fatia) aprovados. O método de execução **já foi escolhido: inline** (ver "Fatias e execução").
 
-**Próxima etapa (2026-10-02):** o Rafael revisa os arquivos e volta → fechar os **três pontos** (Next, `qrcode`, env da CLI do Prisma) → decidir os **achados da releitura crítica** → **debate do harness** (agentes, skills, templates, hooks, quebra dos arquivos de contexto) → só então **escrever a spec** → revisão do Rafael → **três planos** → revisão do Rafael → começa a semana de implementação pela fatia 1. Fechados: cenários P1 a P7, testes e CI (T1 a T5), prazo, fatias, método de execução e `npm run dev` sem chaves (arquivo `.env.development.local`). **Não escrever a spec antes de o Rafael liberar.**
+**Próxima etapa (atualizada em 2026-10-02):** harness, etapa 1 (quebrar os arquivos de contexto: faltam 3 decisões, ver "Harness" em "Pendências") → executar a quebra → **achados da releitura** na ordem RC1 → RC2 → RC4 → RC5 → RC3 → RC6 → RC7 a RC10 → baixos em bloco → só então **escrever a spec** (o Rafael libera) → revisão do Rafael → **três planos**
 
 ## Como retomar
 
@@ -65,7 +65,9 @@ Todas debatidas com trade-offs e aprovadas pelo Rafael. **Não reabrir sem motiv
 | Tema | Decisões (resumo de uma linha) | Fonte |
 |---|---|---|
 | Base | Next.js full-stack na Vercel (AD-001); Prisma + Neon (AD-002); sem login, token de gestão (AD-003); camadas com domínio puro (AD-004) | ADR |
-| Versões e ferramentas | Node 24, Next 16.3.6, Prisma 7.10.0 exato (a `latest` do CLI é um RC do 8), TS 6.0.3; npm 11 endurecido; kebab-case; pt-BR; Conventional Commits | `architecture.md`, `code-style.md`, PRD |
+| Versões e ferramentas | Node 24, **Next 16.3.8** (correções de segurança, 2026-10-02), Prisma 7.10.0 exato (a `latest` do CLI é um RC do 8), TS 6.0.3; npm 11 endurecido; kebab-case; pt-BR; Conventional Commits | `architecture.md`, `code-style.md`, PRD |
+| Três pontos (2026-10-02) | Next sobe para 16.3.8 (+ `eslint-config-next`); `qrcode@1.5.4` mantido (29 pacotes, 0 vulnerabilidades, `yargs` só na CLI); CLI do Prisma lê as variáveis com `loadEnvConfig` de `@next/env` no `prisma.config.ts` (mesma precedência do `next dev`) | `architecture.md` "Baseline", "Persistência", "QR code" |
+| Harness (2026-10-02) | **Escopo B, em duas etapas:** agora só a quebra dos arquivos de contexto (pesa em toda sessão e na spec); agentes, skills e hooks nascem durante as fatias, em marcos. **Corte B, por assunto:** cada regra num lugar só, como já dizia o `.agents/context/README.md` | "Harness" em "Pendências" |
 | Modelo de dados | PKs `SERIAL`/`BIGSERIAL`; hash SHA-256 do token (`BYTEA`); sem IP; dispositivo como enum; referrer só como host; dia em `America/Sao_Paulo`; `timestamptz(3)` | `domain.md` "Modelo de dados", `security.md` |
 | Criação (6a a 6c, P1 a P5, P7) | R1 a R6 da URL; limite 1 a 1.000.000; expiração por duração ou fim do dia; token base64url exibido uma vez num card; QR PNG 512 px e **opcional se falhar depois de gravar (P1)**; parâmetros ignorados (P2); botão desabilitado (P3); `trim()` (P4); destaque + `beforeunload` para o link de gestão (P5); momento da expiração exibido embaixo do seletor de data, só na tela (P7) | `domain.md` |
 | Blocklist (R7, B1 a B3) | Google Safe Browsing v5 `hashes.search`, **só na criação**, só prefixos de hash saem; porta `UrlThreatChecker`; **fail-closed** com timeout de 2 s (B1); adaptador em `src/infra/` (B2); aviso "suspeito" + "Advisory provided by Google" com link (B3) | `domain.md` R7, `security.md` "Blocklist" |
@@ -84,12 +86,7 @@ Todas debatidas com trade-offs e aprovadas pelo Rafael. **Não reabrir sem motiv
 
 ## Pendências
 
-**Três pontos a fechar (análise apresentada em 2026-10-02, aguardando o Rafael):**
-1. **Baseline do Next:** a `latest` é a **16.3.8** (30/09), com correções de segurança (High: SSRF no Image Optimization, GHSA-cjq9-62q9-8jv4; Medium: cache poisoning e vazamentos de `use cache`). Recomendação: subir para 16.3.8 (e `eslint-config-next` junto).
-2. **`qrcode@1.5.4`:** 29 pacotes, 2,6 MB, `npm audit` com 0 vulnerabilidades (2026-10-02), nenhum script de instalação. O código da biblioteca só importa `pngjs`, `dijkstrajs` e `fs`; o `yargs@15` é usado só pela CLI (`bin/`). Recomendação: manter. Alternativa: `qrcode-generator` (0 dependências) + codificador PNG próprio com `node:zlib` (`deflateSync` + `crc32`, nativos no Node 24).
-3. **Env da CLI do Prisma:** o Prisma 7 não carrega `.env` sozinho (guia "Upgrade to Prisma ORM 7", "Environment variables"). Recomendação: `loadEnvConfig(process.cwd(), true)` de **`@next/env`** no `prisma.config.ts`. É a orientação do Next para "a root config file for an ORM" (doc "Environment Variables"), aplica as mesmas regras de precedência do `next dev` (lê o `.env.development.local`), não sobrescreve variáveis já definidas no shell e já vem como dependência do `next@16.3.8` (declarar explícito por causa do `import/no-extraneous-dependencies`). Alternativas: `dotenv` (dependência nova, lê `.env` por padrão) e `process.loadEnvFile()` nativo (precedência própria).
-
-**Achados da releitura crítica (2026-10-02, aguardando decisão, um por mensagem):**
+**Achados da releitura crítica (2026-10-02, aguardando decisão, um por mensagem).** Começam **depois da quebra dos arquivos**, para cada decisão já ser gravada no arquivo novo. Ordem aprovada: RC1 → RC2 (ambientes da Vercel) → RC4 → RC5 ("falta algo") → RC3 → RC6 → RC7 a RC10 → baixos em bloco.
 - **Altos (decisão nova):**
   - **RC1. Migrations em produção e banco dos previews:** ninguém definiu quem roda `prisma migrate deploy` no Neon, nem se os *previews* da Vercel usam o banco de produção.
   - **RC2. Origem canônica:** `shortUrl`, `manageUrl` e a R3 dependem do "domínio próprio por configuração", mas nenhuma variável foi definida, e o app responde em vários hosts `*.vercel.app` (um por deploy), o que permite contornar a R3.
@@ -104,7 +101,14 @@ Todas debatidas com trade-offs e aprovadas pelo Rafael. **Não reabrir sem motiv
   - **RC10.** A R4 não pega domínio público que aponta para IP privado (`127.0.0.1.nip.io`, `localtest.me`), porque o servidor não resolve DNS: documentar ou bloquear. IPv6 literal público (`[2001:db8::1]`) cai na regra "host sem ponto".
 - **Baixos (clareza na spec, sem decisão):** relógio (`now()` do banco × `new Date()` da função no Prisma); gravar `url.href` normalizado; regex de bots ancorada (`^WhatsApp/`); corrigir o texto do `x-forwarded-for` no `security.md`; rota estática de 7 letras (`/privacy`) sombrearia um slug igual (chance desprezível).
 
-**Debate do harness (aberto em 2026-10-02):** agentes (`.agents/agents/` e `.claude/agents/`), skills, templates, hooks no `.claude/settings.json` e quebra dos arquivos de contexto. Fatos levantados:
+**Harness (debate aberto em 2026-10-02).** Abrange agentes (`.agents/agents/` e `.claude/agents/`), skills, templates, hooks no `.claude/settings.json` e a quebra dos arquivos de contexto.
+- **Decidido: escopo B, em duas etapas.**
+  - **Etapa 1 (agora, antes da spec):** quebrar os arquivos de contexto, eliminar a carga duplicada e fazer o Antigravity enxergar o domínio.
+  - **Etapa 2 (durante as fatias), com marcos:** hooks na fatia 1, quando existirem `lint`, `typecheck` e `test`, carregando a skill `update-config`; o agente revisor de fatia na fatia 1 (junto com a pendência "quem revisa"); skills só quando uma tarefa ou um erro se repetir.
+  - Motivo: a skill `superpowers:writing-skills` ("no skill without a failing test first"; convenção do projeto fica nas regras; restrição mecânica vira hook ou lint). Descartados: tudo agora (hooks chamando comandos que não existem, skills sem falha observada) e nada agora (spec e sessões pagando ~100 KB, Antigravity truncando).
+- **Decidido: corte por assunto (B), cada regra num lugar só.** É a convenção que o `.agents/context/README.md` já declarava. O detalhe de implementação (SQL, nomes de método, regex) sai das regras e vai para a spec (skill `domain-modeling`: o glossário fica "devoid of implementation details"). Descartados: por camada (uma regra de negócio espalhada em 4 arquivos) e por fluxo (rate limit, token, QR e modelo de dados repetidos, com risco de cópias divergentes).
+- **Faltam 3 decisões da etapa 1, uma por vez:** (1) o que carrega sempre e o que fica sob demanda; (2) limite por arquivo e localização (o `.agents/rules` do Antigravity não lê subpastas; limite de 12 mil do editor; `AGENTS.md`; links do `.claude/`); (3) o que sai das regras e vai para a spec. Depois, executar a quebra, com commit.
+- Fatos levantados:
 - Tamanhos: `domain.md` 39.554 caracteres (245 linhas), `architecture.md` 22.240, `security.md` 14.940 (após o registro da C). O editor de regras do Antigravity mostra limite de 12.000 (print do Rafael); segundo a doc citada pelo `agy`, a regra é truncada acima de 24 KB, e as regras `always_on` dividem um teto de 20 mil tokens.
 - O `CLAUDE.md` importa todas as regras, o `domain.md`, o PRD e o ADR em toda sessão (~100 KB). Os `.claude/rules/*.md` são links simbólicos para `.agents/rules/`, e o Claude Code carrega `.claude/rules/` sozinho: conferir com `/memory` se há carga duplicada.
 - Recursos: o Claude Code tem `paths:` (regra condicional), `.claude/agents/`, `.claude/skills/` e hooks no `settings.json`. O Antigravity tem `trigger:` (`always_on`, `model_decision`, `glob`, `manual`), `.agents/agents/<nome>.md`, `.agents/skills/`, hooks em `.agents/hooks.json`, lê `AGENTS.md` e não lê `CLAUDE.md`; workflows são descontinuados em 01/11/2026 em favor de skills.
@@ -130,14 +134,12 @@ Todas debatidas com trade-offs e aprovadas pelo Rafael. **Não reabrir sem motiv
   - lint `import/no-extraneous-dependencies` e a candidata `no-restricted-imports` (domínio não importa `next/*`, `@/data/*` nem `@/infra/*`);
   - `engines.node`, script `prisma generate && next build`;
   - `.env.example` (copiado para `.env.development.local`) com `USE_LOCAL_FAKES=true`, `DATABASE_URL` do `compose.yml`, `DIRECT_URL`, os tokens do Upstash e `SAFE_BROWSING_API_KEY` em branco;
-  - `prisma.config.ts` carregando as variáveis (ponto 3 acima);
+  - `prisma.config.ts` chamando `loadEnvConfig(process.cwd(), true)` de `@next/env` (`devDependency` explícita, na versão do `next`);
   - `next.config.ts` exportado como função de `phase`, com a trava do `USE_LOCAL_FAKES`;
   - `compose.yml` (Postgres), `vitest.config.mts` (`resolve.tsconfigPaths`, `fileParallelism: false`), scripts `test`, `test:http`, `lint` e `typecheck`;
   - workflow do CI em `.github/workflows/` (ações por SHA, `permissions: contents: read`, Postgres como *service container*);
   - instalar sempre com versão explícita.
-- `qrcode@1.5.4`: ver ponto 2 acima.
 - Nota: o Prisma 8 renomeia `updateManyAndReturn` para `updateAll()` (o projeto fixa o 7).
-- Baseline do Next: ver ponto 1 acima.
 - **Pré-requisito do Rafael, antes da implementação:** projeto no Google Cloud + API key **restrita à Safe Browsing API** (gratuito, sem faturamento; ver `security.md`).
 - Adicionar a linha da spec em `docs/superpowers/specs/README.md`, fazer a autorrevisão e pedir a revisão do Rafael.
 
