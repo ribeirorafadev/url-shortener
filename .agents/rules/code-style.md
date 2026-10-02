@@ -23,6 +23,15 @@ Decidido em 2026-09-28.
   - Exemplos: `feat(domain): gera slug base62 com CSPRNG`, `fix(redirect): responde 410 para link desativado`, `chore(deps): fixa prisma em 7.10.0`.
 - **Sem validação automática** (projeto solo). Evolução possível: hook `commit-msg` em shell em `.githooks/` com `core.hooksPath`, sem dependência. commitlint + husky foram descartados por adicionarem dependências.
 - **Trailer `Co-Authored-By` do Claude mantido** nos commits feitos pelo agente. É uma escolha de transparência: o desenvolvimento é guiado por IA.
-- **Branches:** `main` sempre "deployável"; cada spec ganha uma branch própria (ex.: `feat/mvp`), que é a **Branch Alvo** do cabeçalho da spec. Push só com autorização do Rafael.
-- **Pull Requests (decidido em 2026-09-30):** o código entra na `main` só por PR com o CI verde, porque o ruleset da `main` barra o merge com ✗ (ver `architecture.md`, "Publicação só com o CI verde"). O ruleset exige **só o CI verde, sem aprovação de revisor**: o GitHub não deixa o autor aprovar o próprio PR, e o projeto é solo. A revisão é o Rafael ler o diff ("Files changed") antes do merge. O título do PR segue o mesmo formato de Conventional Commits. O ruleset é ativado no setup, junto com o CI; até lá, os commits de documentação da fase de design vão direto na `main`.
+- **Branches e fatias (decidido em 2026-10-01):** `main` sempre "deployável". O MVP tem **uma spec e três fatias**, e cada fatia tem **plano, branch e PR próprios**:
+  1. `feat/mvp-1-base`: setup, Docker, CI, ruleset, Vercel, Neon e o domínio com testes;
+  2. `feat/mvp-2-create-redirect`: criação (Google Safe Browsing e rate limit), redirect, teste de concorrência e testes HTTP;
+  3. `feat/mvp-3-manage`: página de gestão (estatísticas, QR, desativar) e README.
+  - Cada fatia termina com o site funcionando e publicado. A fatia seguinte nasce da `main` atualizada, depois do merge da anterior.
+  - Na spec, o campo **Branch Alvo** lista as três branches; cada plano usa a da sua fatia em **Branch de Trabalho**.
+  - A spec e os planos são documentação e vão direto na `main`, porque o ruleset só é ativado durante a fatia 1.
+  - Push só com autorização do Rafael.
+  - Motivos: PRs menores, que dá para revisar de verdade; a primeira PR, feita em conjunto, acontece no começo da semana e não no fim; e sempre existe uma versão no ar se o prazo apertar.
+  - Descartado: uma branch `feat/mvp` com um PR só no fim, grande demais para revisar e sem nada no ar até o último dia.
+- **Pull Requests (decidido em 2026-09-30):** o código entra na `main` só por PR com o CI verde, porque o ruleset da `main` barra o merge com ✗ (ver `architecture.md`, "Publicação só com o CI verde"). O ruleset exige **só o CI verde, sem aprovação de revisor**: o GitHub não deixa o autor aprovar o próprio PR, e o projeto é solo. A revisão é o Rafael ler o diff ("Files changed") antes do merge. O título do PR segue o mesmo formato de Conventional Commits. O ruleset é ativado na fatia 1, junto com o CI; até lá, os commits de documentação (design, spec e planos) vão direto na `main`. Cada fatia gera **um PR**.
 

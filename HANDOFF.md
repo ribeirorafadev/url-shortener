@@ -1,10 +1,10 @@
 # short-url — Handoff
 
-**Atualizado em:** 2026-09-30 · **Versão longa anterior:** `git show a944166:HANDOFF.md` (histórico detalhado das sessões)
+**Atualizado em:** 2026-10-01 · **Versão longa anterior:** `git show a944166:HANDOFF.md` (histórico detalhado das sessões)
 
-**Fase:** design pelo **caminho arquitetural** do `superpowers:brainstorming`. **Nenhum código escrito, de propósito.** O hard-gate só libera código depois de: spec escrita e aprovada → plano (`superpowers:writing-plans`) aprovado → método de execução escolhido.
+**Fase:** design pelo **caminho arquitetural** do `superpowers:brainstorming`. **Nenhum código escrito, de propósito.** O hard-gate só libera código depois de: spec escrita e aprovada → os **três planos** (`superpowers:writing-plans`, um por fatia) aprovados. O método de execução **já foi escolhido: inline** (ver "Fatias e execução").
 
-**Próxima etapa:** decidir o **`npm run dev` sem chaves** (última pendência antes da spec, ver "Pendências") → **escrever a spec**. Os cenários P1 a P7 e a estratégia de testes e CI (T1 a T5) estão fechados.
+**Próxima etapa:** decidir o **`npm run dev` sem chaves** (última pendência antes da spec, ver "Pendências") → **escrever a spec** → revisão do Rafael → **três planos** → revisão do Rafael → começa a semana de implementação pela fatia 1. Fechados: cenários P1 a P7, testes e CI (T1 a T5), prazo, fatias e método de execução.
 
 ## Como retomar
 
@@ -16,9 +16,29 @@
 
 ## Prazo (decidido em 2026-09-30)
 
-- A semana de trabalho **começa quando a spec e o plano forem aprovados**. O design não conta.
+- A semana de trabalho **começa quando a spec e os três planos forem aprovados**. O design não conta.
 - O Rafael dedica **no máximo 4 a 5 horas por dia**.
-- **Nenhum corte de escopo:** todas as decisões foram pensadas para um MVP justo, honesto e bem documentado. Se o prazo apertar, o plano é ordenado em fatias que funcionam de ponta a ponta, para sempre haver uma versão no ar.
+- **Nenhum corte de escopo:** todas as decisões foram pensadas para um MVP justo, honesto e bem documentado. Se o prazo apertar, as fatias garantem que sempre há uma versão no ar.
+- Estimativa (não oficial): 28 a 35 h no total, ou 6 a 8 dias de 4 a 5 h. O que mais pesa é criar as contas, instalar o Docker, revisar os PRs e entender o código, e não escrever código.
+
+## Fatias e execução (decidido em 2026-10-01)
+
+**Três fatias, cada uma com plano, branch e PR próprios** (fonte: `code-style.md`, "Branches e fatias"):
+
+| Fatia | Branch | Entrega | No ar ao final |
+|---|---|---|---|
+| 1. Base | `feat/mvp-1-base` | Setup, Docker, CI, ruleset, Vercel, Neon e o domínio com testes | Página inicial + CI verde; **primeira PR, feita em conjunto** |
+| 2. Criar e redirecionar | `feat/mvp-2-create-redirect` | Criação (Google e rate limit), redirect, teste de concorrência e testes HTTP | Dá para encurtar e usar um link |
+| 3. Gestão e entrega | `feat/mvp-3-manage` | Página de gestão (estatísticas, QR, desativar) e README | MVP completo |
+
+- Uma spec só para o MVP, com as três branches no campo **Branch Alvo**. Três planos, um por fatia, **escritos e aprovados juntos** antes de começar: é aí que a semana começa.
+- A spec e os planos vão direto na `main` (documentação, antes do ruleset).
+
+**Execução inline, com o Rafael acompanhando cada tarefa** (`superpowers:executing-plans`):
+- O agente implementa as tarefas do plano na própria conversa, uma por vez, com TDD (teste falhando → código → teste passando → commit), na branch da fatia.
+- **Ajuste pedido pelo Rafael:** a skill manda executar todas as tarefas sem parar, mas a instrução dele tem precedência. **Ao fim de cada tarefa, pausa curta** com o que foi feito, o teste que falhou e depois passou, e o commit. Ele responde e a próxima tarefa começa.
+- O progresso fica num *ledger* em `.superpowers/sdd/<plano>/progress.md` (ignorado pelo Git), que permite retomar depois de uma compactação de contexto ou de uma sessão nova sem refazer tarefa.
+- **Pendente (decidir antes da fatia 1):** quem faz a **revisão final de cada fatia**. A skill pede um revisor com contexto novo antes do PR: um subagente no modelo mais capaz ou o Antigravity CLI (`agy -p`), que o `CLAUDE.md` global já indica para revisão de código.
 
 ## Goal
 
@@ -53,6 +73,7 @@ Todas debatidas com trade-offs e aprovadas pelo Rafael. **Não reabrir sem motiv
 | Dados (D1, 10e) | `@prisma/adapter-pg` + `pg.Pool` global + `attachDatabasePool`; `idleTimeoutMillis` 5 s; `connectionTimeoutMillis` 5 s → 503 | `architecture.md` |
 | Testes (T1 a T3) | Vitest 5 em dev (T1); Postgres dos testes e do dev em Docker via `compose.yml`, porta presa ao `127.0.0.1`, `TRUNCATE` antes de cada arquivo e arquivos em série (T2); entrada fina + testes HTTP com `fetch` contra `next start` (`npm run test:http`), sem dependência nova (T3) | `architecture.md` "Testes" |
 | CI e publicação (T4, T5) | GitHub Actions completo (lint, tipos, `npm test`, `test:http`), **sem segredos**, ações fixadas por SHA, `contents: read` (T4); **ruleset na `main`** (merge só por PR com ✓) + **Deployment Checks da Vercel** (publica só com ✓), só configuração em painel (T5) | `architecture.md`, `security.md`, `code-style.md` |
+| Prazo, fatias e execução (2026-09-30 e 2026-10-01) | Semana conta a partir da aprovação da spec e dos três planos, 4 a 5 h/dia, sem corte de escopo; três fatias com plano, branch e PR próprios; execução inline com pausa ao fim de cada tarefa | PRD, `code-style.md`, "Fatias e execução" acima |
 | Erros e rate limit (10a a 10d) | Upstash fora: fail-open no redirect, fail-closed na criação; 10/min + 100/dia na criação, 300/min no redirect, timeout de 1 s; chave `/64` no IPv6; até 3 tentativas em colisão de slug; mapa de erros aprovado | `security.md`, `domain.md` "Mapa de erros" |
 
 **Defeito corrigido (2026-09-30):** o SQL atômico não checava `deactivated_at`. Já está corrigido em `domain.md`. Vale uma releitura crítica das regras antes da spec.
@@ -64,11 +85,12 @@ Todas debatidas com trade-offs e aprovadas pelo Rafael. **Não reabrir sem motiv
 **Pendências de setup (anotadas, sem decisão aberta):**
 - Instalar o Docker na máquina do Rafael (hoje não há Docker nem Postgres) e escolher entre `sudo` e o modo *rootless*, porque o grupo `docker` equivale a root.
 - Definir a versão major do Postgres ao criar o projeto no Neon (14 a 18); o `compose.yml` usa a mesma.
-- Ativar o ruleset da `main` e os Deployment Checks junto com o CI, e confirmar com um commit que falha de propósito que o `*.vercel.app` também fica retido.
-- **Primeira PR feita em conjunto (combinado em 2026-09-30):** o Rafael nunca trabalhou com PR. A primeira PR da `feat/mvp` é feita **junto com ele, passo a passo**: abrir pelo site do GitHub (o `gh` não está instalado), ler o diff em "Files changed", acompanhar o CI e, se aparecer ✗, abrir o "Details", reproduzir localmente, corrigir na mesma branch e dar push. O ruleset exige **só o CI verde, sem aprovação**, porque o GitHub não deixa o autor aprovar o próprio PR.
+- Ativar o ruleset da `main` e os Deployment Checks na fatia 1, junto com o CI, e confirmar com um commit que falha de propósito que o `*.vercel.app` também fica retido.
+- **Primeira PR feita em conjunto (combinado em 2026-09-30):** o Rafael nunca trabalhou com PR. A primeira PR, a da fatia 1 (`feat/mvp-1-base`), é feita **junto com ele, passo a passo**: abrir pelo site do GitHub (o `gh` não está instalado), ler o diff em "Files changed", acompanhar o CI e, se aparecer ✗, abrir o "Details", reproduzir localmente, corrigir na mesma branch e dar push. O ruleset exige **só o CI verde, sem aprovação**, porque o GitHub não deixa o autor aprovar o próprio PR.
 
 **Para a spec** (`docs/superpowers/specs/2026-XX-XX-short-url-mvp-design.md`, formato de `spec-workflow.md`):
-- Consolidar PRD, `domain.md`, `security.md` e `architecture.md`, com as seções `## Alternativas consideradas…` e `## Requisitos rastreados` (RF/RNF).
+- Consolidar PRD, `domain.md`, `security.md` e `architecture.md`, com as seções `## Alternativas consideradas…` e `## Requisitos rastreados` (RF/RNF). Na tabela de requisitos, a coluna de task aponta para o plano da fatia correspondente.
+- Cabeçalho: **Branch Alvo** com as três branches das fatias.
 - **Plano de testes** (T1 a T3 já decididos):
   - domínio com fakes em memória (`LinkRepository`, `UrlThreatChecker`, rate limiter);
   - funções puras com testes de tabela: `isValidSlugFormat`, `isPreviewBot`, classificação de dispositivo, host do referrer, normalização do IP para `/64`, formato do token, precedência do motivo do 410, `trim()`, conversão do "fim do dia" com o offset de `America/Sao_Paulo` e a **canonicalização do Safe Browsing** (com os exemplos da doc do Google);
@@ -90,20 +112,21 @@ Todas debatidas com trade-offs e aprovadas pelo Rafael. **Não reabrir sem motiv
 - **Pré-requisito do Rafael, antes da implementação:** projeto no Google Cloud + API key **restrita à Safe Browsing API** (gratuito, sem faturamento; ver `security.md`).
 - Adicionar a linha da spec em `docs/superpowers/specs/README.md`, fazer a autorrevisão e pedir a revisão do Rafael.
 
-**Depois da spec aprovada:** seção RF/RNF no Excalidraw → `superpowers:writing-plans` → código só com o plano aprovado. A spec vai na branch dela (ex.: `feat/mvp`).
+**Depois da spec aprovada:** seção RF/RNF no Excalidraw → `superpowers:writing-plans` para os **três planos** (um arquivo por fatia em `docs/superpowers/plans/`, cada um com a sua **Branch de Trabalho**) → revisão do Rafael → execução inline da fatia 1. A spec e os planos são commitados direto na `main`.
 
 **Limitações já documentadas** (não são pendências; entram na spec e no README): scanners de e-mail consomem links com limite; iPad aparece como DESKTOP; `click_count` pode divergir dos eventos; logs da Vercel e histórico guardam o token; a blocklist não pega golpe novo nem site que vira golpe depois; resposta perdida na rede perde o token.
 
 ## Excalidraw (documentação visual, no navegador do Rafael)
 
-- **Estado (2026-09-30):** 5 seções (REGRAS DE NEGÓCIO, STACKS, SYSTEM DESIGN, MODELO DE DADOS, ENTREGA (CI/CD)), **125 elementos**. Backup da versão anterior (93 elementos) em `excalidraw-backup-<ts>` no `localStorage`. Não exportado para o repositório. É o **resumo visual**; a verdade são os `.md`.
+- **Estado (revisado pelo Rafael em 2026-10-01, sem correções):** 5 seções (REGRAS DE NEGÓCIO, STACKS, SYSTEM DESIGN, MODELO DE DADOS, ENTREGA (CI/CD)), **125 elementos**. Backup da versão anterior (93 elementos) em `excalidraw-backup-<ts>` no `localStorage`. Não exportado para o repositório. É o **resumo visual**; a verdade são os `.md`.
 - **Atualizado em 2026-09-30:**
   - regras 11 a 15 (blocklist, destino público, sem reativação, rate limit de criação, aviso do P7);
   - STACKS com Blocklist, Testes e CI;
   - SYSTEM DESIGN com `HEAD`, 429/503, `«interface» UrlThreatChecker`, camada `src/infra` com `SafeBrowsingUrlThreatChecker`, caixa externa do Google Safe Browsing e as decisões de design reescritas (1 a 9);
   - seção nova ENTREGA (CI/CD): push → PR → CI → merge (ruleset) → Vercel (Deployment Checks) → produção.
 - **Pendente:**
-  - **conferência visual pelo Rafael no início da sessão de 2026-10-01** (a automação não consegue rolar o canvas). Se algo estiver torto, corrigir antes de seguir;
+  - **melhorar a visualização no futuro** (pedido do Rafael em 2026-10-01, sem prazo e sem urgência);
+  - a caixa "git push na branch (ex.: feat/mvp)" da seção ENTREGA ficou desatualizada com as fatias: trocar por `feat/mvp-1-base` na próxima edição pedida pelo Rafael;
   - seção RF/RNF só depois da spec aprovada;
   - no fim, o Rafael exporta (`.excalidraw` + SVG) para `docs/`.
 - **Protocolo de edição (via localStorage, claude-in-chrome), só quando o Rafael pedir na própria mensagem:**
@@ -154,6 +177,6 @@ Todas debatidas com trade-offs e aprovadas pelo Rafael. **Não reabrir sem motiv
 - pt-BR, direto, Markdown estruturado, **negrito** em termos críticos; decisão não trivial com fonte real (doc oficial, RFC, lei, OWASP).
 - Quer entender os trade-offs antes de decidir. Nunca apresentar decisão como fato consumado.
 - Ao fechar um bloco, pede **varredura com `grep` + atualização de todos os arquivos afetados + HANDOFF + commit/push**.
-- Base em Java/Spring e segurança; está aprendendo Next.js, ORM e serverless. Nunca usou Docker, Neon, CI nem PR (explicados em 2026-09-30).
+- Base em Java/Spring e segurança; está aprendendo Next.js, ORM e serverless. Nunca usou Docker, Neon, CI nem PR (explicados em 2026-09-30). Quer **acompanhar cada tarefa** da implementação, porque o projeto também é aprendizado e ele precisa explicar cada parte numa entrevista.
 - Ação destrutiva: relatório primeiro (o quê, onde, risco), autorização depois.
 - Pode acionar o Antigravity CLI (`agy -p "..."`) para pesquisa web e revisão.

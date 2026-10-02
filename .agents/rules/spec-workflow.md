@@ -4,7 +4,7 @@
 
 * **`docs/superpowers/PRD.md`** — intenção de produto (problema, público, fora de escopo, critério de "pronto"). Estável, revisado no lugar — não é log, não append-only.
 * **`docs/superpowers/specs/[data]-[slug]-design.md`** — spec + design fundidos (WHAT + HOW), um arquivo por feature/mudança.
-* **`docs/superpowers/plans/[data]-[slug].md`** — breakdown executável de tasks, referencia o spec correspondente via campo `**Spec:**`.
+* **`docs/superpowers/plans/[data]-[slug].md`** — breakdown executável de tasks, referencia o spec correspondente via campo `**Spec:**`. Uma spec pode ter mais de um plano: o MVP tem **um plano por fatia**, cada um com a sua branch (ver `code-style.md`, "Branches e fatias").
 * **`docs/superpowers/specs/README.md`** — índice de todas as specs, mantido atualizado a cada nova spec criada.
 * **`docs/superpowers/ADR.md`** — log append-only de decisões de nível de projeto (`AD-NNN`).
 * **`HANDOFF.md`** (raiz) — snapshot de pausa/retomada da sessão em andamento; sobrescrito a cada handoff, não é histórico.
