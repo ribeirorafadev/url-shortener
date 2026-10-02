@@ -1,10 +1,10 @@
 # short-url — Handoff
 
-**Atualizado em:** 2026-10-01 · **Versão longa anterior:** `git show a944166:HANDOFF.md` (histórico detalhado das sessões)
+**Atualizado em:** 2026-10-02 · **Versão longa anterior:** `git show a944166:HANDOFF.md` (histórico detalhado das sessões)
 
 **Fase:** design pelo **caminho arquitetural** do `superpowers:brainstorming`. **Nenhum código escrito, de propósito.** O hard-gate só libera código depois de: spec escrita e aprovada → os **três planos** (`superpowers:writing-plans`, um por fatia) aprovados. O método de execução **já foi escolhido: inline** (ver "Fatias e execução").
 
-**Próxima etapa:** **escrever a spec** → revisão do Rafael → **três planos** → revisão do Rafael → começa a semana de implementação pela fatia 1. Fechados: cenários P1 a P7, testes e CI (T1 a T5), prazo, fatias, método de execução e `npm run dev` sem chaves.
+**Próxima etapa (2026-10-02):** o Rafael revisa os arquivos e volta → fechar os **três pontos** (Next, `qrcode`, env da CLI do Prisma) → decidir os **achados da releitura crítica** → **debate do harness** (agentes, skills, templates, hooks, quebra dos arquivos de contexto) → só então **escrever a spec** → revisão do Rafael → **três planos** → revisão do Rafael → começa a semana de implementação pela fatia 1. Fechados: cenários P1 a P7, testes e CI (T1 a T5), prazo, fatias, método de execução e `npm run dev` sem chaves (arquivo `.env.development.local`). **Não escrever a spec antes de o Rafael liberar.**
 
 ## Como retomar
 
@@ -37,6 +37,7 @@
 **Execução inline, com o Rafael acompanhando cada tarefa** (`superpowers:executing-plans`):
 - O agente implementa as tarefas do plano na própria conversa, uma por vez, com TDD (teste falhando → código → teste passando → commit), na branch da fatia.
 - **Ajuste pedido pelo Rafael:** a skill manda executar todas as tarefas sem parar, mas a instrução dele tem precedência. **Ao fim de cada tarefa, pausa curta** com o que foi feito, o teste que falhou e depois passou, e o commit. Ele responde e a próxima tarefa começa.
+- **Comentários inline durante a implementação (pedido em 2026-10-02):** a cada etapa, explicar no próprio fluxo **como a peça se encaixa nas decisões** (ex.: ao criar o `.env.example`, por que o destino é o `.env.development.local` e como as duas travas agem; ao escrever o ponto de montagem, onde entram os falsos). O Rafael quer acompanhar todas as etapas e entender o encaixe na prática, não só o resultado.
 - O progresso fica num *ledger* em `.superpowers/sdd/<plano>/progress.md` (ignorado pelo Git), que permite retomar depois de uma compactação de contexto ou de uma sessão nova sem refazer tarefa.
 - **Pendente (decidir antes da fatia 1):** quem faz a **revisão final de cada fatia**. A skill pede um revisor com contexto novo antes do PR: um subagente no modelo mais capaz ou o Antigravity CLI (`agy -p`), que o `CLAUDE.md` global já indica para revisão de código.
 
@@ -74,14 +75,39 @@ Todas debatidas com trade-offs e aprovadas pelo Rafael. **Não reabrir sem motiv
 | Testes (T1 a T3) | Vitest 5 em dev (T1); Postgres dos testes e do dev em Docker via `compose.yml`, porta presa ao `127.0.0.1`, `TRUNCATE` antes de cada arquivo e arquivos em série (T2); entrada fina + testes HTTP com `fetch` contra `next start` (`npm run test:http`), sem dependência nova (T3) | `architecture.md` "Testes" |
 | CI e publicação (T4, T5) | GitHub Actions completo (lint, tipos, `npm test`, `test:http`), **sem segredos**, ações fixadas por SHA, `contents: read` (T4); **ruleset na `main`** (merge só por PR com ✓) + **Deployment Checks da Vercel** (publica só com ✓), só configuração em painel (T5) | `architecture.md`, `security.md`, `code-style.md` |
 | Prazo, fatias e execução (2026-09-30 e 2026-10-01) | Semana conta a partir da aprovação da spec e dos três planos, 4 a 5 h/dia, sem corte de escopo; três fatias com plano, branch e PR próprios; execução inline com pausa ao fim de cada tarefa | PRD, `code-style.md`, "Fatias e execução" acima |
-| `npm run dev` sem chaves (2026-10-01) | `USE_LOCAL_FAKES=true` troca Upstash e Google por falsos locais (o do Google marca só as URLs de teste oficiais como suspeitas); trava 1: só com `NODE_ENV === 'development'`; trava 2: o `next.config.ts` faz o build e o `next start` falharem com a variável ligada; chave ausente nunca ativa falso | `architecture.md` "`npm run dev` sem chaves", `security.md` |
+| `npm run dev` sem chaves (2026-10-01; arquivo em 2026-10-02) | `USE_LOCAL_FAKES=true`, no **`.env.development.local`** (só o `next dev` lê, e o Git ignora), troca Upstash e Google por falsos locais (o do Google marca só as URLs de teste oficiais como suspeitas); trava 1: só com `NODE_ENV === 'development'`; trava 2: o `next.config.ts` faz o build e o `next start` falharem com a variável ligada; chave ausente nunca ativa falso | `architecture.md` "`npm run dev` sem chaves", `security.md` |
 | Erros e rate limit (10a a 10d) | Upstash fora: fail-open no redirect, fail-closed na criação; 10/min + 100/dia na criação, 300/min no redirect, timeout de 1 s; chave `/64` no IPv6; até 3 tentativas em colisão de slug; mapa de erros aprovado | `security.md`, `domain.md` "Mapa de erros" |
 
-**Defeito corrigido (2026-09-30):** o SQL atômico não checava `deactivated_at`. Já está corrigido em `domain.md`. Vale uma releitura crítica das regras antes da spec.
+**Defeito corrigido (2026-09-30):** o SQL atômico não checava `deactivated_at`. Já está corrigido em `domain.md`.
+
+**Defeito corrigido (2026-10-02):** a primeira versão do `npm run dev` sem chaves punha o `USE_LOCAL_FAKES` no `.env.local`, que o `next build` também lê: a trava 2 quebraria o `npm run test:http` local. Corrigido para `.env.development.local`. **Releitura crítica feita em 2026-10-02:** achados em "Pendências".
 
 ## Pendências
 
-Nenhuma decisão de design aberta. A próxima etapa é escrever a spec.
+**Três pontos a fechar (análise apresentada em 2026-10-02, aguardando o Rafael):**
+1. **Baseline do Next:** a `latest` é a **16.3.8** (30/09), com correções de segurança (High: SSRF no Image Optimization, GHSA-cjq9-62q9-8jv4; Medium: cache poisoning e vazamentos de `use cache`). Recomendação: subir para 16.3.8 (e `eslint-config-next` junto).
+2. **`qrcode@1.5.4`:** 29 pacotes, 2,6 MB, `npm audit` com 0 vulnerabilidades (2026-10-02), nenhum script de instalação. O código da biblioteca só importa `pngjs`, `dijkstrajs` e `fs`; o `yargs@15` é usado só pela CLI (`bin/`). Recomendação: manter. Alternativa: `qrcode-generator` (0 dependências) + codificador PNG próprio com `node:zlib` (`deflateSync` + `crc32`, nativos no Node 24).
+3. **Env da CLI do Prisma:** o Prisma 7 não carrega `.env` sozinho (guia "Upgrade to Prisma ORM 7", "Environment variables"). Recomendação: `loadEnvConfig(process.cwd(), true)` de **`@next/env`** no `prisma.config.ts`. É a orientação do Next para "a root config file for an ORM" (doc "Environment Variables"), aplica as mesmas regras de precedência do `next dev` (lê o `.env.development.local`), não sobrescreve variáveis já definidas no shell e já vem como dependência do `next@16.3.8` (declarar explícito por causa do `import/no-extraneous-dependencies`). Alternativas: `dotenv` (dependência nova, lê `.env` por padrão) e `process.loadEnvFile()` nativo (precedência própria).
+
+**Achados da releitura crítica (2026-10-02, aguardando decisão, um por mensagem):**
+- **Altos (decisão nova):**
+  - **RC1. Migrations em produção e banco dos previews:** ninguém definiu quem roda `prisma migrate deploy` no Neon, nem se os *previews* da Vercel usam o banco de produção.
+  - **RC2. Origem canônica:** `shortUrl`, `manageUrl` e a R3 dependem do "domínio próprio por configuração", mas nenhuma variável foi definida, e o app responde em vários hosts `*.vercel.app` (um por deploy), o que permite contornar a R3.
+  - **RC3. SQL escrito à mão no gráfico diário:** o `date_trunc(... AT TIME ZONE 'America/Sao_Paulo')` não cabe na API de consulta do Prisma; definir se `$queryRaw` com template parametrizado (ou TypedSQL) é permitido.
+  - **RC4. Chave ausente em produção e no `test:http`:** se o cliente do Upstash ou do Google lançar exceção ao carregar o módulo, o redirect vira 500 em vez de fail-open. Regra proposta: configuração ausente = "serviço indisponível", checada na chamada.
+  - **RC5. IP ausente:** o `ipAddress` lê `x-real-ip` (o `security.md` fala em `x-forwarded-for`) e devolve `undefined` fora da Vercel. Falta o comportamento: criação fail-closed? Redirect segue?
+  - **RC6. Headers de segurança globais** (CSP, `X-Content-Type-Options`, `frame-ancestors`) nunca foram decididos.
+- **Médios:**
+  - **RC7.** Ordem de validação na criação: `maxClicks` e `expiration` não aparecem no fluxo; validar todos os campos locais antes de consultar o Google (não gasta cota e mostra todos os erros de uma vez).
+  - **RC8.** Fonte do "total de cliques" no dashboard: `click_count` ou contagem de eventos (podem divergir).
+  - **RC9.** `BOT` no gráfico diário e evento de bot em link 404/410: não definidos.
+  - **RC10.** A R4 não pega domínio público que aponta para IP privado (`127.0.0.1.nip.io`, `localtest.me`), porque o servidor não resolve DNS: documentar ou bloquear. IPv6 literal público (`[2001:db8::1]`) cai na regra "host sem ponto".
+- **Baixos (clareza na spec, sem decisão):** relógio (`now()` do banco × `new Date()` da função no Prisma); gravar `url.href` normalizado; regex de bots ancorada (`^WhatsApp/`); corrigir o texto do `x-forwarded-for` no `security.md`; rota estática de 7 letras (`/privacy`) sombrearia um slug igual (chance desprezível).
+
+**Debate do harness (aberto em 2026-10-02):** agentes (`.agents/agents/` e `.claude/agents/`), skills, templates, hooks no `.claude/settings.json` e quebra dos arquivos de contexto. Fatos levantados:
+- Tamanhos: `domain.md` 39.554 caracteres (245 linhas), `architecture.md` 22.240, `security.md` 14.940 (após o registro da C). O editor de regras do Antigravity mostra limite de 12.000 (print do Rafael); segundo a doc citada pelo `agy`, a regra é truncada acima de 24 KB, e as regras `always_on` dividem um teto de 20 mil tokens.
+- O `CLAUDE.md` importa todas as regras, o `domain.md`, o PRD e o ADR em toda sessão (~100 KB). Os `.claude/rules/*.md` são links simbólicos para `.agents/rules/`, e o Claude Code carrega `.claude/rules/` sozinho: conferir com `/memory` se há carga duplicada.
+- Recursos: o Claude Code tem `paths:` (regra condicional), `.claude/agents/`, `.claude/skills/` e hooks no `settings.json`. O Antigravity tem `trigger:` (`always_on`, `model_decision`, `glob`, `manual`), `.agents/agents/<nome>.md`, `.agents/skills/`, hooks em `.agents/hooks.json`, lê `AGENTS.md` e não lê `CLAUDE.md`; workflows são descontinuados em 01/11/2026 em favor de skills.
 
 **Pendências de setup (anotadas, sem decisão aberta):**
 - Instalar o Docker na máquina do Rafael (hoje não há Docker nem Postgres) e escolher entre `sudo` e o modo *rootless*, porque o grupo `docker` equivale a root.
@@ -103,14 +129,15 @@ Nenhuma decisão de design aberta. A próxima etapa é escrever a spec.
   - `allowScripts` (revisar a cada dependência nova);
   - lint `import/no-extraneous-dependencies` e a candidata `no-restricted-imports` (domínio não importa `next/*`, `@/data/*` nem `@/infra/*`);
   - `engines.node`, script `prisma generate && next build`;
-  - `.env.example` com `USE_LOCAL_FAKES=true`, `DATABASE_URL` do `compose.yml`, `DIRECT_URL`, os tokens do Upstash e `SAFE_BROWSING_API_KEY` em branco;
+  - `.env.example` (copiado para `.env.development.local`) com `USE_LOCAL_FAKES=true`, `DATABASE_URL` do `compose.yml`, `DIRECT_URL`, os tokens do Upstash e `SAFE_BROWSING_API_KEY` em branco;
+  - `prisma.config.ts` carregando as variáveis (ponto 3 acima);
   - `next.config.ts` exportado como função de `phase`, com a trava do `USE_LOCAL_FAKES`;
   - `compose.yml` (Postgres), `vitest.config.mts` (`resolve.tsconfigPaths`, `fileParallelism: false`), scripts `test`, `test:http`, `lint` e `typecheck`;
   - workflow do CI em `.github/workflows/` (ações por SHA, `permissions: contents: read`, Postgres como *service container*);
   - instalar sempre com versão explícita.
-- Reavaliar as dependências transitivas do `qrcode@1.5.4` (traz `yargs@15`).
+- `qrcode@1.5.4`: ver ponto 2 acima.
 - Nota: o Prisma 8 renomeia `updateManyAndReturn` para `updateAll()` (o projeto fixa o 7).
-- O Next já tem a **16.3.7** (a baseline é a 16.3.6): decidir na spec se a baseline sobe.
+- Baseline do Next: ver ponto 1 acima.
 - **Pré-requisito do Rafael, antes da implementação:** projeto no Google Cloud + API key **restrita à Safe Browsing API** (gratuito, sem faturamento; ver `security.md`).
 - Adicionar a linha da spec em `docs/superpowers/specs/README.md`, fazer a autorrevisão e pedir a revisão do Rafael.
 
@@ -178,6 +205,8 @@ Nenhuma decisão de design aberta. A próxima etapa é escrever a spec.
 
 - pt-BR, direto, Markdown estruturado, **negrito** em termos críticos; decisão não trivial com fonte real (doc oficial, RFC, lei, OWASP).
 - Quer entender os trade-offs antes de decidir. Nunca apresentar decisão como fato consumado.
+- Depois de fechar uma decisão, às vezes pede **"explique melhor o cenário de uso das opções"** antes de registrar: é para aprender, não é dúvida sobre a escolha. Registrar só quando ele liberar.
+- Na implementação, quer **comentários inline** explicando o encaixe de cada peça (ver "Fatias e execução").
 - Ao fechar um bloco, pede **varredura com `grep` + atualização de todos os arquivos afetados + HANDOFF + commit/push**.
 - Base em Java/Spring e segurança; está aprendendo Next.js, ORM e serverless. Nunca usou Docker, Neon, CI nem PR (explicados em 2026-09-30). Quer **acompanhar cada tarefa** da implementação, porque o projeto também é aprendizado e ele precisa explicar cada parte numa entrevista.
 - Ação destrutiva: relatório primeiro (o quê, onde, risco), autorização depois.
