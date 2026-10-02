@@ -4,7 +4,7 @@
 
 **Fase:** design pelo **caminho arquitetural** do `superpowers:brainstorming`. **Nenhum código escrito, de propósito.** O hard-gate só libera código depois de: spec escrita e aprovada → os **três planos** (`superpowers:writing-plans`, um por fatia) aprovados. O método de execução **já foi escolhido: inline** (ver "Fatias e execução").
 
-**Próxima etapa:** decidir o **`npm run dev` sem chaves** (última pendência antes da spec, ver "Pendências") → **escrever a spec** → revisão do Rafael → **três planos** → revisão do Rafael → começa a semana de implementação pela fatia 1. Fechados: cenários P1 a P7, testes e CI (T1 a T5), prazo, fatias e método de execução.
+**Próxima etapa:** **escrever a spec** → revisão do Rafael → **três planos** → revisão do Rafael → começa a semana de implementação pela fatia 1. Fechados: cenários P1 a P7, testes e CI (T1 a T5), prazo, fatias, método de execução e `npm run dev` sem chaves.
 
 ## Como retomar
 
@@ -74,13 +74,14 @@ Todas debatidas com trade-offs e aprovadas pelo Rafael. **Não reabrir sem motiv
 | Testes (T1 a T3) | Vitest 5 em dev (T1); Postgres dos testes e do dev em Docker via `compose.yml`, porta presa ao `127.0.0.1`, `TRUNCATE` antes de cada arquivo e arquivos em série (T2); entrada fina + testes HTTP com `fetch` contra `next start` (`npm run test:http`), sem dependência nova (T3) | `architecture.md` "Testes" |
 | CI e publicação (T4, T5) | GitHub Actions completo (lint, tipos, `npm test`, `test:http`), **sem segredos**, ações fixadas por SHA, `contents: read` (T4); **ruleset na `main`** (merge só por PR com ✓) + **Deployment Checks da Vercel** (publica só com ✓), só configuração em painel (T5) | `architecture.md`, `security.md`, `code-style.md` |
 | Prazo, fatias e execução (2026-09-30 e 2026-10-01) | Semana conta a partir da aprovação da spec e dos três planos, 4 a 5 h/dia, sem corte de escopo; três fatias com plano, branch e PR próprios; execução inline com pausa ao fim de cada tarefa | PRD, `code-style.md`, "Fatias e execução" acima |
+| `npm run dev` sem chaves (2026-10-01) | `USE_LOCAL_FAKES=true` troca Upstash e Google por falsos locais (o do Google marca só as URLs de teste oficiais como suspeitas); trava 1: só com `NODE_ENV === 'development'`; trava 2: o `next.config.ts` faz o build e o `next start` falharem com a variável ligada; chave ausente nunca ativa falso | `architecture.md` "`npm run dev` sem chaves", `security.md` |
 | Erros e rate limit (10a a 10d) | Upstash fora: fail-open no redirect, fail-closed na criação; 10/min + 100/dia na criação, 300/min no redirect, timeout de 1 s; chave `/64` no IPv6; até 3 tentativas em colisão de slug; mapa de erros aprovado | `security.md`, `domain.md` "Mapa de erros" |
 
 **Defeito corrigido (2026-09-30):** o SQL atômico não checava `deactivated_at`. Já está corrigido em `domain.md`. Vale uma releitura crítica das regras antes da spec.
 
 ## Pendências
 
-**`npm run dev` sem chaves (próxima decisão):** quem clona e roda o site completo sem as chaves do Upstash e do Google tem a criação recusada, porque a criação é fail-closed. A regra está certa para produção, mas impede quem clona de experimentar o site. Apresentar as opções no formato de sempre (ex.: só documentar as contas gratuitas no README, ou fakes ligados por uma variável explícita só em dev, com trava para nunca valer em produção).
+Nenhuma decisão de design aberta. A próxima etapa é escrever a spec.
 
 **Pendências de setup (anotadas, sem decisão aberta):**
 - Instalar o Docker na máquina do Rafael (hoje não há Docker nem Postgres) e escolher entre `sudo` e o modo *rootless*, porque o grupo `docker` equivale a root.
@@ -102,7 +103,8 @@ Todas debatidas com trade-offs e aprovadas pelo Rafael. **Não reabrir sem motiv
   - `allowScripts` (revisar a cada dependência nova);
   - lint `import/no-extraneous-dependencies` e a candidata `no-restricted-imports` (domínio não importa `next/*`, `@/data/*` nem `@/infra/*`);
   - `engines.node`, script `prisma generate && next build`;
-  - `.env.example` com `DATABASE_URL`, `DIRECT_URL`, os tokens do Upstash e `SAFE_BROWSING_API_KEY`;
+  - `.env.example` com `USE_LOCAL_FAKES=true`, `DATABASE_URL` do `compose.yml`, `DIRECT_URL`, os tokens do Upstash e `SAFE_BROWSING_API_KEY` em branco;
+  - `next.config.ts` exportado como função de `phase`, com a trava do `USE_LOCAL_FAKES`;
   - `compose.yml` (Postgres), `vitest.config.mts` (`resolve.tsconfigPaths`, `fileParallelism: false`), scripts `test`, `test:http`, `lint` e `typecheck`;
   - workflow do CI em `.github/workflows/` (ações por SHA, `permissions: contents: read`, Postgres como *service container*);
   - instalar sempre com versão explícita.
