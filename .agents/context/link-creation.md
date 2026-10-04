@@ -1,0 +1,34 @@
+# Criação do link
+
+Parte do contexto de domínio, lido sob demanda pelo índice do `AGENTS.md`. Trechos marcados **[→ spec]** são detalhe de implementação e vão para a spec do MVP quando ela for escrita.
+
+## Regras
+
+- **Token de gestão**: exibido só na resposta de criação. Se o usuário perder o link de gestão, não há recuperação (não existe conta).
+  - **Formato:** 32 bytes de `crypto.getRandomValues` em **base64url sem padding** (RFC 4648, §5), com 43 caracteres seguros para URL.
+  - **Exibição única (decidida em 2026-09-28):** a Server Action devolve o resultado como estado (`useActionState`), e um **card na própria tela de criação** mostra o link curto, o link de gestão, o QR, os botões "copiar" e "baixar" e o aviso "guarde este link: não há recuperação". Um F5 descarta o estado, o que é o comportamento certo para um segredo exibido uma vez. Nada do token vai para `localStorage`, cookie ou log. Descartado: redirecionar para `/manage/[token]` logo após criar, porque isso gravaria o token no histórico do navegador na hora (ver `.agents/rules/security-token.md`, "Vazamentos do token").
+- **Contrato da `createLink`:** Server Action não tem status HTTP de erro (é sempre `POST 200`). **[→ spec]** O resultado é um tipo discriminado:
+
+  ```ts
+  type CreateLinkState =
+    | { status: 'idle' }
+    | { status: 'success'; shortUrl: string; manageUrl: string; qrCodeDataUrl: string | null; isInsecureDestination: boolean }
+    | { status: 'error'; fieldErrors?: Partial<Record<'url' | 'maxClicks' | 'expiration', string>>; message?: string; threatAdvisory?: true }
+  ```
+
+  `shortUrl` e `manageUrl` são absolutos (`https://<domínio>/...`). `isInsecureDestination` alimenta o aviso de destino `http:` (R1). O mapeamento completo de erros está em `error-map.md`.
+  - **Perda do token depois de criado (P5, decidido em 2026-09-30).** Há dois caminhos:
+    - **Aba fechada sem guardar o link de gestão (comum): mitigado com duas medidas.**
+      - **C:** o link de gestão aparece em destaque no card (borda de alerta, acima do link curto), junto com o aviso "guarde este link: não há recuperação".
+      - **B:** enquanto o link de gestão **não foi copiado**, um `beforeunload` pede confirmação ao fechar ou recarregar a aba. Depois de copiar, o evento é removido.
+      - Limitações (MDN, `beforeunload`): o texto da caixa é genérico do navegador, o evento exige interação prévia com a página e **não é confiável em celular**. Por isso a C cobre o celular.
+    - **Resposta perdida na rede depois de gravar (raro): limitação documentada.** O servidor não sabe que a resposta se perdeu, e sem conta não há como reenviar o token. O link órfão é inofensivo, porque ninguém conhece o slug nem o token.
+    - Descartado: só o aviso de texto.
+  - **Duplo envio (P3, decidido em 2026-09-30):** o botão "Encurtar" fica desabilitado, com o texto "Encurtando…", enquanto a action está em andamento (`isPending` do `useActionState`). Isso evita o segundo link órfão do duplo clique. Requisição forjada repetida fica a cargo do rate limit (10b). Descartados: não tratar (duplo clique cria 2 links e 1 órfão) e chave de idempotência no servidor (infraestrutura extra contra algo que o rate limit já segura).
+  - **Depois de gravar, a criação nunca responde erro (P1, decidido em 2026-09-30).** O token é exibido uma vez só e é insubstituível, então uma falha posterior à gravação (hoje, só a geração do QR) vira sucesso **parcial**: `qrCodeDataUrl: null`, e o card mostra os dois links com o aviso "Não foi possível gerar o QR code". A falha é logada. O banco não muda nada, porque o QR nunca é persistido (é gerado sob demanda a partir da URL curta).
+  - Descartados: devolver erro, que faz o usuário perder o token e deixa um link órfão; e gerar o QR antes de gravar, que obrigaria a partir a criação do domínio em duas chamadas ou a fazer o domínio conhecer o QR (AD-004).
+- **QR code:** PNG em data URL, com **512 px** (`qrcode.toDataURL`), exibido num `<img>` com botão "baixar". PNG funciona em qualquer lugar (WhatsApp, Word, gráfica). SVG foi descartado porque a exibição inline exigiria `dangerouslySetInnerHTML`. A biblioteca é a `qrcode@1.5.4`; as dependências transitivas foram avaliadas em 2026-10-02 (ver `.agents/rules/architecture-stack.md`, "QR code").
+
+## Fluxo
+
+**Criar link**: formulário → Server Action → rate limit (10/min e 100/dia por IP; Upstash fora → erro, fail-closed) → validação da URL (R1 a R6) → R7: consulta o Google Safe Browsing (só prefixos de hash) → gera slug e token → grava via Prisma (colisão de slug → sorteia de novo, até 3 tentativas) → o domínio devolve o link curto e o token → a Server Action gera o QR code (camada de entrada) → devolve o estado `success` com o link curto, o link de gestão e o QR, exibidos uma única vez no card de resultado.

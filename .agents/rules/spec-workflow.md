@@ -1,3 +1,7 @@
+---
+trigger: model_decision
+description: "Formato e fluxo de PRD, specs, planos, ADR e HANDOFF (Spec-Driven Development). Ler ao escrever ou revisar spec, plano, ADR ou o índice de specs."
+---
 # Fluxo de Spec-Driven Development do Projeto
 
 ## 1. Estrutura de artefatos
@@ -69,3 +73,12 @@ Toda spec não-trivial inclui uma seção `## Alternativas consideradas e por qu
 ```
 
 Tasks usam `### Task N: <Nome>`, sempre com blocos `**Files:**` e `**Interfaces:**` antes dos steps numerados.
+
+## 8. Regra × spec (decidido em 2026-10-03)
+
+* **Regras** (`.agents/rules/`) e **contexto** (`.agents/context/`) guardam **o quê e por quê**: comportamento, restrições, decisões com motivo e alternativas descartadas (inclusive a escolha de biblioteca e de configuração).
+* A **spec** guarda **o como**: SQL, tipos TypeScript, regex, nomes de método e de arquivo, pseudocódigo.
+* Critério para cada trecho: **"se isto mudar durante a implementação, a regra de negócio muda?"** Sim → fica na regra. Não → vai para a spec. Ex.: "slug de 7 caracteres base62, aleatório" fica na regra; a regex `^[A-Za-z0-9]{7}$` vai para a spec.
+* Ao escrever a spec do MVP, **mover para ela os trechos marcados `[→ spec]`** em `.agents/context/` e deixar no lugar uma referência à seção da spec. Detalhes curtos em linha sem rótulo (um nome de método, uma regex) também são triados nessa hora.
+* Motivo: cada detalhe existe num lugar só. Um SQL repetido na regra e na spec já divergiu uma vez (o UPDATE atômico sem `deactivated_at`, corrigido em 2026-09-30).
+

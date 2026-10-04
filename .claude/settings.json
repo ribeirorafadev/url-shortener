@@ -1,10 +1,6 @@
 {
   "permissions": {
-    "deny": [
-      "Read(.env*)",
-      "Read(*.pem)",
-      "Read(*.key)"
-    ]
+    "deny": ["Read(.env*)", "Read(*.pem)", "Read(*.key)"]
   },
   "hooks": {}
 }

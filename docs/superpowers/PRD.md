@@ -23,7 +23,7 @@ O produto precisa funcionar de verdade, com deploy público: um encurtador de UR
 - Redirecionamento rápido (HTTP 302), registrando o clique com dispositivo, referrer e data.
 - Página de gestão (`/manage/[token]`) com estatísticas agregadas por dispositivo, referrer e dia, o QR code do link para baixar de novo e a opção de desativar o link.
 - Rate limiting na criação e no redirecionamento.
-- Validação da URL de destino: só `http`/`https`, mais as regras R2 a R6 de `domain.md`.
+- Validação da URL de destino: só `http`/`https`, mais as regras R2 a R6 de `.agents/context/url-validation.md`.
 - **Checagem de URL maliciosa na criação (R7)**, contra a blocklist do Google Safe Browsing (incluída no MVP em 2026-09-30). Protege quem clica e o próprio domínio da demo, que poderia ser marcado como perigoso se redirecionasse para golpes.
 - **Idioma: pt-BR** na interface e no README, porque o alvo atual do portfólio são vagas no Brasil (decidido em 2026-09-28). É coerente com o fuso fixo em `America/Sao_Paulo` e com os textos já definidos (rótulo do gráfico, card neutro para bots). Os identificadores de código ficam em inglês.
 
@@ -44,7 +44,7 @@ O produto precisa funcionar de verdade, com deploy público: um encurtador de UR
   - mantém baixo o impacto de um token vazado (ver e desativar, nunca sequestrar o link);
   - mantém o analytics coerente.
   
-  A evolução documentada é o destino **editável só até o primeiro clique** (`UPDATE ... WHERE click_count = 0`, atômico), que serve para corrigir erro de digitação antes de compartilhar sem abrir bait-and-switch. Ela não resolve QR code impresso (quem imprime testa escaneando, e o primeiro clique trava o destino). Os bots de preview também podem travar o link. Edição livre fica descartada enquanto o token tiver vazamentos residuais aceitos (logs da Vercel e histórico do navegador; ver `.agents/rules/security.md`, "Vazamentos do token"), e exigiria histórico de destinos.
+  A evolução documentada é o destino **editável só até o primeiro clique** (`UPDATE ... WHERE click_count = 0`, atômico), que serve para corrigir erro de digitação antes de compartilhar sem abrir bait-and-switch. Ela não resolve QR code impresso (quem imprime testa escaneando, e o primeiro clique trava o destino). Os bots de preview também podem travar o link. Edição livre fica descartada enquanto o token tiver vazamentos residuais aceitos (logs da Vercel e histórico do navegador; ver `.agents/rules/security-token.md`, "Vazamentos do token"), e exigiria histórico de destinos.
 
 ## Critério de "pronto"
 
@@ -54,7 +54,7 @@ O produto precisa funcionar de verdade, com deploy público: um encurtador de UR
 - O limite de cliques é respeitado sob requisições concorrentes (incremento atômico no banco).
 - Rate limiting ativo na criação e no redirecionamento.
 - URL listada no Google Safe Browsing é recusada na criação, com aviso qualificado ("suspeito") e a atribuição "Advisory provided by Google".
-- Testes automatizados da camada de domínio passando (Vitest; ver `architecture.md`), mais o teste de concorrência com Postgres real e os testes HTTP do redirect e da página de gestão.
+- Testes automatizados da camada de domínio passando (Vitest; ver `.agents/rules/architecture-testing-ci.md`), mais o teste de concorrência com Postgres real e os testes HTTP do redirect e da página de gestão.
 - CI (GitHub Actions) verde na `main`, e a publicação na Vercel só acontece depois dele (ruleset + Deployment Checks).
 - README com descrição, stack, diagrama de system design, link para o ADR, seção "como escalaria", instruções para rodar localmente e para rodar os testes (Node + Docker, sem conta em nenhum serviço, com os serviços falsos do `npm run dev` via `USE_LOCAL_FAKES` no `.env.development.local`, e como trocar pelas chaves reais), a dica "um link por canal" (UTM no destino, P2) e o **aviso de que a checagem do Google Safe Browsing pode ter falsos positivos e falsos negativos** (exigência dos termos do Google).
 - Tudo entregue em cerca de 1 semana de trabalho, **contada a partir da aprovação da spec e dos três planos** (um por fatia, ver `code-style.md`), com no máximo 4 a 5 horas por dia (decidido em 2026-09-30). O escopo do MVP não será cortado: cada item foi decidido com trade-off para ser um MVP justo, honesto e bem documentado.

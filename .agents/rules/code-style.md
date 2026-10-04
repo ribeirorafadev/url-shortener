@@ -1,8 +1,11 @@
+---
+trigger: always_on
+---
 # Convenções de Código — short-url
 
 ## Formatação
-- Linter/formatter: ESLint + Prettier, que é o padrão global do autor para JS/TS. O lint roda no CI a cada push (ver `architecture.md`, "CI no MVP"). As regras exatas e um eventual hook de pre-commit ficam para o setup.
-  - O ESLint do Next (`eslint-config-next`) depende do `typescript-eslint`, que exige TypeScript `<6.1.0`. Por isso o projeto usa o TS 6.0.3 (ver `architecture.md`).
+- Linter/formatter: ESLint + Prettier, que é o padrão global do autor para JS/TS. O lint roda no CI a cada push (ver `architecture-testing-ci.md`, "CI no MVP"). As regras exatas e um eventual hook de pre-commit ficam para o setup.
+  - O ESLint do Next (`eslint-config-next`) depende do `typescript-eslint`, que exige TypeScript `<6.1.0`. Por isso o projeto usa o TS 6.0.3 (ver `architecture-stack.md`).
   - Regra `import/no-extraneous-dependencies: error`. O plugin `eslint-plugin-import` já vem com o `eslint-config-next`. Ela barra a dependência fantasma: todo pacote importado precisa estar declarado no `package.json`.
   - Candidata a definir na spec: regra `no-restricted-imports` para barrar `next/*`, `@/data/*` e `@/infra/*` dentro de `src/domain/` e transformar o AD-004 em erro de lint.
 - Indentação: ver `.editorconfig` (gerado automaticamente — não duplicar valor aqui)
@@ -33,5 +36,5 @@ Decidido em 2026-09-28.
   - Push só com autorização do Rafael.
   - Motivos: PRs menores, que dá para revisar de verdade; a primeira PR, feita em conjunto, acontece no começo da semana e não no fim; e sempre existe uma versão no ar se o prazo apertar.
   - Descartado: uma branch `feat/mvp` com um PR só no fim, grande demais para revisar e sem nada no ar até o último dia.
-- **Pull Requests (decidido em 2026-09-30):** o código entra na `main` só por PR com o CI verde, porque o ruleset da `main` barra o merge com ✗ (ver `architecture.md`, "Publicação só com o CI verde"). O ruleset exige **só o CI verde, sem aprovação de revisor**: o GitHub não deixa o autor aprovar o próprio PR, e o projeto é solo. A revisão é o Rafael ler o diff ("Files changed") antes do merge. O título do PR segue o mesmo formato de Conventional Commits. O ruleset é ativado na fatia 1, junto com o CI; até lá, os commits de documentação (design, spec e planos) vão direto na `main`. Cada fatia gera **um PR**.
+- **Pull Requests (decidido em 2026-09-30):** o código entra na `main` só por PR com o CI verde, porque o ruleset da `main` barra o merge com ✗ (ver `architecture-testing-ci.md`, "Publicação só com o CI verde"). O ruleset exige **só o CI verde, sem aprovação de revisor**: o GitHub não deixa o autor aprovar o próprio PR, e o projeto é solo. A revisão é o Rafael ler o diff ("Files changed") antes do merge. O título do PR segue o mesmo formato de Conventional Commits. O ruleset é ativado na fatia 1, junto com o CI; até lá, os commits de documentação (design, spec e planos) vão direto na `main`. Cada fatia gera **um PR**.
 
