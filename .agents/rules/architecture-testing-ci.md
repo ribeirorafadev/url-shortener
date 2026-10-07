@@ -22,7 +22,7 @@ description: "Vitest, Postgres em Docker, testes HTTP, CI no GitHub Actions, dep
     - **PGlite**, que aceita uma conexão só: os cliques "simultâneos" rodariam em fila, e o teste de concorrência não provaria nada.
 - **Testes da camada de entrada (decidido em 2026-09-30): entrada fina + testes HTTP reais.**
   - O `route.ts` e a action só repassam o trabalho. A tradução do resultado do domínio em resposta HTTP (status, headers, HTML fixo) fica em funções de `src/app/_lib/`, testadas no Vitest sem servidor.
-  - Um conjunto pequeno de **testes HTTP** roda num comando separado (`npm run test:http`): sobe o site com `next build && next start` contra o Postgres do Docker, grava os links de teste direto no banco e faz requisições com `fetch` nativo, **sem dependência nova**. Conferem:
+  - Um conjunto pequeno de **testes HTTP** roda num comando separado (`npm run test:http`): sobe o site com `next build && next start` contra o Postgres do Docker (schema aplicado antes pelo `npm run db:migrate`), grava os links de teste direto no banco e faz requisições com `fetch` nativo, **sem dependência nova**. Conferem:
     - o status (302/404/410);
     - `Cache-Control: no-store` no redirect;
     - o `HEAD` sem incrementar `click_count`;
@@ -38,12 +38,12 @@ description: "Vitest, Postgres em Docker, testes HTTP, CI no GitHub Actions, dep
 
 ## CI, deploy e publicação
 
-- **CI no MVP (decidido em 2026-09-30): GitHub Actions completo.** A cada push, roda o lint, a checagem de tipos, o `npm test` (com o Postgres em *service container*) e o `npm run test:http`. É gratuito para repositório público (doc "GitHub Actions billing").
+- **CI no MVP (decidido em 2026-09-30): GitHub Actions completo.** A cada push, depois do `npm ci` (que gera o client do Prisma no `postinstall`) e do `npm run db:migrate` no Postgres do *service container* (S1), roda o lint, a checagem de tipos, o `npm test` e o `npm run test:http`. É gratuito para repositório público (doc "GitHub Actions billing").
   - **Nenhum segredo no CI:** os testes usam serviços falsos e o Postgres do container, então o robô nunca vê as chaves do Neon, do Upstash ou do Google.
   - As ações de terceiros ficam **fixadas pelo SHA completo do commit** (`actions/checkout@<sha>`), não por tag. É o mesmo raciocínio do `save-exact`: "Pinning an action to a full-length commit SHA is currently the only way to use an action as an immutable release" (GitHub Docs, "Secure use reference").
   - O `GITHUB_TOKEN` fica com permissão mínima: `permissions: contents: read`.
   - Descartados: sem CI (um push sem rodar os testes publica o bug) e CI sem os testes HTTP (não protege os headers nem o `HEAD`, e custaria quase o mesmo).
-- Onde e como faz deploy: Vercel, com deploy único (frontend e backend juntos, AD-001), via integração Git (Vercel for GitHub): push na `main` gera o deploy de produção, e as outras branches geram *previews*. O build aplica as migrations (`prisma migrate deploy`), e cada preview usa a sua branch do Neon, fechada pela Standard Protection (RC1; ver `architecture-persistence.md`, "Migrations em produção e banco dos previews").
+- Onde e como faz deploy: Vercel, com deploy único (frontend e backend juntos, AD-001), via integração Git (Vercel for GitHub): push na `main` gera o deploy de produção, e as outras branches geram *previews*. O build da Vercel aplica as migrations (`prisma migrate deploy`, no `buildCommand` do `vercel.json`, S1), e cada preview usa a sua branch do Neon, fechada pela Standard Protection (RC1; ver `architecture-persistence.md`, "Migrations em produção e banco dos previews").
 - **Publicação só com o CI verde (decidido em 2026-09-30): duas travas, só configuração em painel, sem código.**
   - **Ruleset na `main` (GitHub):** exige que o job do CI passe antes do merge, então código só entra na `main` por Pull Request com ✓. É a garantia do "`main` sempre deployável" de `code-style.md`. Rulesets são gratuitos em repositório público (GitHub Docs, "About rulesets").
   - **Deployment Checks (Vercel), com o provider GitHub:** a Vercel faz o build da `main`, mas só o coloca no endereço público quando o job do CI passa. Se ele falhar, a versão anterior continua no ar. Cobre o que escapar do ruleset, como um push direto do administrador. "Deployment Checks are available for all projects connected to GitHub repositories" (changelog da Vercel). Existe um *Force Promote* manual para emergências.

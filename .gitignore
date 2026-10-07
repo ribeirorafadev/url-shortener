@@ -10,7 +10,7 @@ dist/
 *.tsbuildinfo
 next-env.d.ts
 
-# Client do Prisma 7, gerado no build (prisma generate)
+# Client do Prisma 7, gerado no postinstall (prisma generate)
 src/data/generated/
 
 # Testes e relatórios (screenshots e traces podem conter URLs de gestão com token)

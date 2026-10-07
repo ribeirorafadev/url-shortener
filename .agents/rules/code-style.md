@@ -9,7 +9,7 @@ trigger: always_on
   - Regra `import/no-extraneous-dependencies: error`. O plugin `eslint-plugin-import` já vem com o `eslint-config-next`. Ela barra a dependência fantasma: todo pacote importado precisa estar declarado no `package.json`.
   - Regra `react/no-danger: error` (RC6): barra o `dangerouslySetInnerHTML`, primeira barreira contra XSS (ver `security-core.md`).
   - Regra contra SQL cru inseguro (RC3): `no-restricted-properties`/`no-restricted-syntax` barrando `$queryRawUnsafe`, `$executeRawUnsafe` e `Prisma.raw` (ver `architecture-layers.md`).
-  - Candidata a definir na spec: regra `no-restricted-imports` para barrar `next/*`, `@/data/*` e `@/infra/*` dentro de `src/domain/` e transformar o AD-004 em erro de lint.
+  - **AD-004 como erro de lint (S2, decidido em 2026-10-07): `no-restricted-imports` com lista branca.** Em `src/domain/`, só valem imports relativos e `@/domain/*`; qualquer pacote é erro, inclusive os que entrarem no projeto depois. No sentido inverso, fora de `src/data/` ninguém importa `@/data/generated/*` (o "único lugar que importa Prisma"). Descartados: só o review (o atalho de importar o erro do Prisma no domínio passa com os testes verdes) e lista negra (um pacote novo não listado passa). Base: ESLint, "no-restricted-imports" (`patterns` no estilo gitignore, com `!` para reincluir).
 - Indentação: ver `.editorconfig` (gerado automaticamente — não duplicar valor aqui)
 
 ## Nomenclatura

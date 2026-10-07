@@ -32,8 +32,8 @@ Este arquivo é lido nativamente pelo Antigravity e importado pelo `CLAUDE.md` n
 | mensagens de erro | `.agents/context/error-map.md` |
 | banco, schema, Prisma, conexão, migrations | `.agents/context/data-model.md` · `.agents/rules/architecture-persistence.md` |
 | Google Safe Browsing | `.agents/rules/security-blocklist.md` · `.agents/context/url-validation.md` (R7) |
-| testes, Docker, CI, deploy, publicação, previews | `.agents/rules/architecture-testing-ci.md` · `.agents/rules/architecture-persistence.md` (migrations no build, branch do Neon por preview) |
-| dependências, versões, `package.json`, `.npmrc` | `.agents/rules/architecture-stack.md` |
+| testes, Docker, CI, deploy, `vercel.json`, publicação, previews | `.agents/rules/architecture-testing-ci.md` · `.agents/rules/architecture-persistence.md` (migrations no build, branch do Neon por preview) |
+| dependências, versões, `package.json` (scripts, `postinstall`), `.npmrc`, `prisma.config.ts` | `.agents/rules/architecture-stack.md` · `.agents/rules/architecture-persistence.md` (S1: `postinstall`, `db:migrate`, `process.env` no `prisma.config.ts`) |
 | `npm run dev`, arquivos `.env*`, `next.config.ts` | `.agents/rules/architecture-local-dev.md` · `.agents/rules/architecture-testing-ci.md` (Postgres em Docker) · `.agents/rules/security-rate-limit.md` (trava de chaves ausentes) · `.agents/context/url-validation.md` (R3: `APP_ORIGIN`); headers globais no núcleo (`security-core.md`) |
 | escopo do produto, o que está fora do MVP | `docs/superpowers/PRD.md` |
 | spec, plano, ADR ou índice de specs | `.agents/rules/spec-workflow.md` · `docs/superpowers/PRD.md` · `docs/superpowers/ADR.md` |
