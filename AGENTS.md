@@ -10,7 +10,7 @@ Este arquivo é lido nativamente pelo Antigravity e importado pelo `CLAUDE.md` n
 - **Slug**: identificador público e curto do link, a parte que vai na URL (`/aB3xZ9k`).
 - **URL de destino**: para onde o visitante é redirecionado. Só `http`/`https`.
 - **Token de gestão**: segredo longo e aleatório, gerado na criação e exibido uma única vez. Quem o possui pode ver as estatísticas e desativar aquele link (`/manage/[token]`). Nunca é exposto publicamente.
-- **Evento de clique**: registro de um redirecionamento bem-sucedido, com dispositivo, referrer e data/hora.
+- **Evento de clique**: registro de um acesso a link **ativo**, com dispositivo, referrer e data/hora: o redirecionamento de um humano ou a prévia de um bot (`BOT`, fora dos totais). `404` e `410` nunca geram evento.
 - **Link ativo / inativo**: é inativo se foi desativado, se passou da data de expiração ou se atingiu o limite de cliques. Um link inativo não redireciona.
 
 ## Como as regras são carregadas

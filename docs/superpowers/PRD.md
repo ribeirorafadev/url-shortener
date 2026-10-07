@@ -21,7 +21,7 @@ O produto precisa funcionar de verdade, com deploy público: um encurtador de UR
 - Encurtar uma URL e receber um link curto (slug aleatório), um link de gestão secreto (exibido uma única vez) e um QR code.
 - Opções na criação, ambas opcionais: **limite de cliques** e **data de expiração**. O padrão é sem limite e sem expiração.
 - Redirecionamento rápido (HTTP 302), registrando o clique com dispositivo, referrer e data.
-- Página de gestão (`/manage/[token]`) com estatísticas agregadas por dispositivo, referrer e dia, o QR code do link para baixar de novo e a opção de desativar o link.
+- Página de gestão (`/manage/[token]`) com estatísticas agregadas por dispositivo, referrer e dia (só humanos; prévias de bots num contador à parte), o QR code do link para baixar de novo e a opção de desativar o link.
 - Rate limiting na criação e no redirecionamento.
 - Validação da URL de destino: só `http`/`https`, mais as regras R2 a R6 de `.agents/context/url-validation.md`.
 - **Checagem de URL maliciosa na criação (R7)**, contra a blocklist do Google Safe Browsing (incluída no MVP em 2026-09-30). Protege quem clica e o próprio domínio da demo, que poderia ser marcado como perigoso se redirecionasse para golpes.

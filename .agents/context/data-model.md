@@ -9,7 +9,7 @@ Decidido:
 - **`slug` é `text` com `UNIQUE`**: sem diferença de desempenho em relação a `varchar(n)` no Postgres. O tamanho é validado no domínio.
 - **`manage_token_hash` é `BYTEA` (32 bytes, SHA-256) com `UNIQUE`**: ver `.agents/rules/security-token.md`.
 - **`destination_url` é imutável**: sem `updated_at` nem histórico de destinos (ver PRD).
-- **`click_count` duplicado em `links`**: é a fonte de verdade do limite, via UPDATE atômico. `click_events` serve só para o detalhamento. Pode haver uma pequena divergência, porque o evento é gravado depois da resposta; isso vai documentado.
+- **`click_count` duplicado em `links`**: é a fonte de verdade do limite, via UPDATE atômico. `click_events` serve só para o detalhamento. Pode haver uma pequena divergência, porque o evento é gravado depois da resposta; isso vai documentado. A tela mostra o total pelo `click_count` e avisa quando o detalhamento fica abaixo dele (RC8, `manage-page.md`).
 - **`deactivated_at` (timestamp nulo) em vez de booleano**: guarda também quando o link foi desativado.
 - **Todos os timestamps são `timestamptz(3)`**: o `DateTime` do Prisma no Postgres é `timestamp` sem fuso por padrão, então precisa de `@db.Timestamptz(3)` explícito.
 - **Índice `(link_id, clicked_at)` em `click_events`**: o Postgres não indexa automaticamente o lado que referencia a FK.

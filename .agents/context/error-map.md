@@ -15,6 +15,7 @@ Princípio: mensagem clara para o usuário, **nenhum detalhe interno** (stack tr
 | `url` | R2: usuário e senha na URL | Links com usuário e senha embutidos não são aceitos. | domínio |
 | `url` | R3: próprio domínio | Não é possível encurtar um link deste próprio encurtador. | domínio |
 | `url` | R4: host não público | O destino precisa ser um site público. | domínio |
+| `url` | R4: IPv6 numérico (RC10) | Endereços IPv6 numéricos não são aceitos. Use o nome do site. | domínio |
 | `url` | R7: listada no Safe Browsing | Este endereço é suspeito de golpe (phishing) ou de distribuir vírus e não pode ser encurtado. A checagem do Google pode errar; se o site é seu e é seguro, você pode pedir revisão ao Google. + linha "Advisory provided by Google" com link (`threatAdvisory: true`) | domínio (via `UrlThreatChecker`) |
 | `maxClicks` | não é inteiro (`10abc`, `2.5`, `-5`, `1e3`) | Informe um número inteiro, sem letras ou casas decimais. | entrada |
 | `maxClicks` | fora de 1 a 1.000.000 | O limite deve ficar entre 1 e 1.000.000 cliques. | domínio |

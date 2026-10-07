@@ -5,6 +5,7 @@ Parte do contexto de domínio, lido sob demanda pelo índice do `AGENTS.md`. Tre
 ## Regras
 
 - **Pré-validação do formato do slug (decidida em 2026-09-29):** a primeira coisa que o `GET`/`HEAD /[slug]` faz é chamar `isValidSlugFormat(slug)`, uma função pura do domínio que testa `^[A-Za-z0-9]{7}$` **[→ spec]**. É a mesma regra de alfabeto e tamanho do `SlugGenerator`, definida num lugar só. Fora do formato → `404` imediato, **antes do rate limit e do banco**. Pedido malformado (`/wp-login.php`, `/.env`, `/admin`) nunca vira link, então não gasta a cota do Upstash nem uma consulta. Descartados: rate limit antes do formato (gasta a cota com lixo) e sem checagem (gasta a cota e uma consulta ao banco).
+  - **Rota fixa na raiz (B-4, aprovado em 2026-10-07):** nenhuma rota fixa na raiz tem exatamente 7 caracteres `[A-Za-z0-9]`, porque esconderia o slug igual (ex.: uma página de privacidade seria `/privacidade`, não `/privacy`). Hoje só existe `/manage`, com 6.
 - **Respostas do redirect**:
   - `302 Found` + `Cache-Control: no-store` quando o link está ativo;
   - `404 Not Found` quando o slug não existe;
@@ -48,7 +49,8 @@ Quando um link curto é colado no WhatsApp, Slack, Telegram, X, Facebook, Linked
 - **Link sem limite** (`max_clicks` nulo): todos recebem o `302`, e o preview mostra o destino. O acesso de bot **não incrementa** o `click_count`.
 - **Link com limite**: o bot recebe um `200` com uma página neutra, com meta OG genéricas ("Link de acesso limitado · abra para continuar"), **sem revelar o destino e sem consumir nada**. Isso anula o bypass por UA forjado (`curl -A "WhatsApp/2.0"`): quem finge ser bot recebe a página neutra, nunca o destino.
 - **Registro:** o acesso de bot vira evento com `device_type = BOT`, sem coluna nova. O dashboard mostra "pré-visualizado N× por bots" à parte e **exclui `BOT` dos totais**. O `click_count` nunca é incrementado por bot.
-- **Detecção:** lista própria no domínio (`isPreviewBot(userAgent)`, função pura com regex, testada com UAs reais), cobrindo `WhatsApp/`, `Slackbot`, `facebookexternalhit`, `Twitterbot`, `TelegramBot`, `LinkedInBot` e `Discordbot`. Os padrões vêm da documentação de cada plataforma. A lib `isbot` foi descartada por ser dependência nova para um problema que cerca de 8 padrões resolvem.
+  - **Só link ativo gera evento (RC9, decidido em 2026-10-07):** o evento de bot é gravado só quando o link está ativo (302 ou página neutra). `404` e `410` **nunca** geram evento, nem de humano nem de bot: o desligamento é o fim da história do link. Descartado: gravar acesso de bot a link inativo (dados sobre um link que já não funciona).
+- **Detecção:** lista própria no domínio (`isPreviewBot(userAgent)`, função pura com regex, testada com UAs reais), cobrindo `WhatsApp/`, `Slackbot`, `facebookexternalhit`, `Twitterbot`, `TelegramBot`, `LinkedInBot` e `Discordbot`. Os padrões vêm da documentação de cada plataforma. **Sem falso positivo (B-3, aprovado em 2026-10-07):** cada padrão é casado na forma mais específica documentada: ancorado no início quando o UA começa com o nome (`^WhatsApp/`), ou como token com barra quando o nome vem dentro do UA (`Discordbot/`). Os testes incluem UAs de navegadores embutidos de apps (Facebook, Instagram), que continuam humanos; senão, um humano num link com limite receberia a página neutra. A lib `isbot` foi descartada por ser dependência nova para um problema que cerca de 8 padrões resolvem.
 - **Limitação documentada:** scanners de segurança de e-mail (Defender Safe Links, Proofpoint, Mimecast) abrem links com UA de navegador comum e continuam consumindo links limitados. A raiz está na RFC 9110, §9.2.1: `GET` é método seguro, e consumir um link num GET é mudança de estado.
 - **Requisições `HEAD` (decidido em 2026-09-29):** recebem o mesmo tratamento de um bot de preview. Um handler `HEAD` próprio só lê o link: sem limite → `302` com `Location`; com limite → `200` sem revelar o destino; inexistente → `404`; inativo → `410`. **Não incrementa `click_count` nem gera evento.** O handler próprio é obrigatório porque, sem ele, o Next 16 responde o `HEAD` executando o `GET` (`auto-implement-methods.ts`), e um verificador de links gastaria um link de uso único. Base: RFC 9110, §9.2.1 (`HEAD` é seguro) e §9.1 (servidor de uso geral deve suportar `GET` e `HEAD`). Descartados: o padrão do Next (consome o link) e o `405` (verificadores de link passariam a acusar o link como quebrado).
 
@@ -65,6 +67,6 @@ Quando um link curto é colado no WhatsApp, Slack, Telegram, X, Facebook, Linked
       └─ não → updateManyAndReturn (atômico)
                ├─ 1 linha → 302 + Cache-Control: no-store
                └─ vazio  → findUnique: 404 ou 410 com motivo
-   4. after(): grava o evento de clique (BOT para bot de preview; nada para HEAD)
+   4. after(): grava o evento de clique só com o link ativo (BOT para bot de preview; nada para HEAD, 404 ou 410)
    banco sem resposta em 5 s ou com falha, em qualquer passo → 503
    ```
