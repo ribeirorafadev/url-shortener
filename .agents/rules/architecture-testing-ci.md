@@ -26,8 +26,9 @@ description: "Vitest, Postgres em Docker, testes HTTP, CI no GitHub Actions, dep
     - o status (302/404/410);
     - `Cache-Control: no-store` no redirect;
     - o `HEAD` sem incrementar `click_count`;
-    - os headers da página de gestão (`Referrer-Policy`, `X-Robots-Tag`, `Cache-Control`).
-  - Esses testes não precisam das chaves do Upstash nem do Google: os links são gravados direto no banco, e o redirect segue sem rate limit quando o Upstash não está disponível (fail-open).
+    - os headers da página de gestão (`Referrer-Policy`, `X-Robots-Tag`, `Cache-Control`);
+    - os headers globais (RC6: `Content-Security-Policy`, `X-Content-Type-Options`, `X-Frame-Options`) numa página e nas respostas 404/410 do redirect.
+  - Esses testes não precisam das chaves do Upstash nem do Google: os links são gravados direto no banco, e o redirect segue sem rate limit quando o Upstash não está disponível (fail-open). Sem as chaves, o adaptador "indisponível" responde na hora, sem esperar timeout (RC4, `security-rate-limit.md`). O `test:http` define `APP_ORIGIN=http://localhost:3000`, porque a página de gestão monta o QR com a origem canônica (RC2).
   - A tela (card, copiar, `beforeunload`) fica com um roteiro manual curto. O Playwright é evolução documentada.
   - Base: Next.js, "Guides: Testing": "we recommend using End-to-End Testing over Unit Testing for async components" (a página de gestão é um desses componentes).
   - Descartados:
@@ -42,7 +43,7 @@ description: "Vitest, Postgres em Docker, testes HTTP, CI no GitHub Actions, dep
   - As ações de terceiros ficam **fixadas pelo SHA completo do commit** (`actions/checkout@<sha>`), não por tag. É o mesmo raciocínio do `save-exact`: "Pinning an action to a full-length commit SHA is currently the only way to use an action as an immutable release" (GitHub Docs, "Secure use reference").
   - O `GITHUB_TOKEN` fica com permissão mínima: `permissions: contents: read`.
   - Descartados: sem CI (um push sem rodar os testes publica o bug) e CI sem os testes HTTP (não protege os headers nem o `HEAD`, e custaria quase o mesmo).
-- Onde e como faz deploy: Vercel, com deploy único (frontend e backend juntos, AD-001), via integração Git (Vercel for GitHub): push na `main` gera o deploy de produção, e as outras branches geram *previews*.
+- Onde e como faz deploy: Vercel, com deploy único (frontend e backend juntos, AD-001), via integração Git (Vercel for GitHub): push na `main` gera o deploy de produção, e as outras branches geram *previews*. O build aplica as migrations (`prisma migrate deploy`), e cada preview usa a sua branch do Neon, fechada pela Standard Protection (RC1; ver `architecture-persistence.md`, "Migrations em produção e banco dos previews").
 - **Publicação só com o CI verde (decidido em 2026-09-30): duas travas, só configuração em painel, sem código.**
   - **Ruleset na `main` (GitHub):** exige que o job do CI passe antes do merge, então código só entra na `main` por Pull Request com ✓. É a garantia do "`main` sempre deployável" de `code-style.md`. Rulesets são gratuitos em repositório público (GitHub Docs, "About rulesets").
   - **Deployment Checks (Vercel), com o provider GitHub:** a Vercel faz o build da `main`, mas só o coloca no endereço público quando o job do CI passa. Se ele falhar, a versão anterior continua no ar. Cobre o que escapar do ruleset, como um push direto do administrador. "Deployment Checks are available for all projects connected to GitHub repositories" (changelog da Vercel). Existe um *Force Promote* manual para emergências.

@@ -16,7 +16,7 @@ Parte do contexto de domínio, lido sob demanda pelo índice do `AGENTS.md`. Tre
     | { status: 'error'; fieldErrors?: Partial<Record<'url' | 'maxClicks' | 'expiration', string>>; message?: string; threatAdvisory?: true }
   ```
 
-  `shortUrl` e `manageUrl` são absolutos (`https://<domínio>/...`). `isInsecureDestination` alimenta o aviso de destino `http:` (R1). O mapeamento completo de erros está em `error-map.md`.
+  `shortUrl` e `manageUrl` são absolutos (`https://<domínio>/...`), montados com a origem canônica (RC2; ver `url-validation.md`, R3). `isInsecureDestination` alimenta o aviso de destino `http:` (R1). O mapeamento completo de erros está em `error-map.md`.
   - **Perda do token depois de criado (P5, decidido em 2026-09-30).** Há dois caminhos:
     - **Aba fechada sem guardar o link de gestão (comum): mitigado com duas medidas.**
       - **C:** o link de gestão aparece em destaque no card (borda de alerta, acima do link curto), junto com o aviso "guarde este link: não há recuperação".
@@ -31,4 +31,6 @@ Parte do contexto de domínio, lido sob demanda pelo índice do `AGENTS.md`. Tre
 
 ## Fluxo
 
-**Criar link**: formulário → Server Action → rate limit (10/min e 100/dia por IP; Upstash fora → erro, fail-closed) → validação da URL (R1 a R6) → R7: consulta o Google Safe Browsing (só prefixos de hash) → gera slug e token → grava via Prisma (colisão de slug → sorteia de novo, até 3 tentativas) → o domínio devolve o link curto e o token → a Server Action gera o QR code (camada de entrada) → devolve o estado `success` com o link curto, o link de gestão e o QR, exibidos uma única vez no card de resultado.
+**Ordem de validação (RC7, decidido em 2026-10-07): duas rodadas, uma por camada, cada uma juntando os erros de todos os campos.** Primeiro o **formato** de todos os campos, na entrada (`trim()`, URL vazia ou acima de 2048, `maxClicks` não inteiro, data inválida, duração fora da lista). Se passar, as **regras** de todos os campos, no domínio (R1 a R6, limite de 1 a 1.000.000, data de hoje até 5 anos). Só sem nenhum erro o Google (R7) é consultado. Motivos: o Google nunca é consultado com formulário inválido (economiza cota e não deixa o formulário virar sonda da blocklist), e cada camada mantém o seu papel (a entrada converte, o domínio decide). A segunda rodada só aparece quando há erro de formato e de regra ao mesmo tempo, o que quase só acontece em requisição forjada. O rate limit continua antes de tudo (10a): tentativas inválidas também contam. Descartados: uma passada só, com a entrada chamando regra por regra (mistura as camadas), e a URL inteira primeiro, com Google, antes dos outros campos (consulta o Google a cada tentativa inválida e mostra um erro por vez).
+
+**Criar link**: formulário → Server Action → rate limit (10/min e 100/dia por IP; Upstash fora, configuração ausente ou IP ausente → erro, fail-closed) → formato de todos os campos (entrada) → regras de todos os campos: R1 a R6, limite de cliques e expiração (domínio) → R7: consulta o Google Safe Browsing (só prefixos de hash) → gera slug e token → grava via Prisma (colisão de slug → sorteia de novo, até 3 tentativas) → o domínio devolve o link curto e o token → a Server Action gera o QR code (camada de entrada) → devolve o estado `success` com o link curto, o link de gestão e o QR, exibidos uma única vez no card de resultado.

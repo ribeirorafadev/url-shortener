@@ -10,7 +10,7 @@ São três camadas no servidor (entrada, domínio e adaptadores), e as dependên
 ```
 src/
 ├── app/          → entrada: páginas, Route Handlers, Server Actions (única camada com next/*)
-│   └── _lib/     → auxiliares fora do roteamento: templates HTML, QR code, rate limit
+│   └── _lib/     → auxiliares fora do roteamento: templates HTML, QR code, rate limit, origem canônica
 ├── domain/       → regras de negócio em TypeScript puro + interfaces (portas)
 ├── data/         → adaptador do banco: Prisma (único lugar que importa Prisma)
 │   └── generated/prisma/   → client gerado (não versionado)
@@ -32,7 +32,7 @@ Direção das dependências: `app` → `domain` ← `data` e `infra`. O domínio
 
 ## Decisões não-negociáveis
 - O domínio nunca importa `next/*`, o client do Prisma nem nada de `src/data/` ou `src/infra/`. Ele recebe as dependências pelo construtor (AD-004).
-- Nada de SQL montado por concatenação de string. Acesso ao banco só via Prisma, com queries parametrizadas.
+- Nada de SQL montado por concatenação de string. Acesso ao banco só via Prisma, com queries parametrizadas. **SQL cru (RC3, decidido em 2026-10-07)** só quando a API do Prisma não alcança, só com `$queryRaw` em template marcado (cada `${}` vira parâmetro de *prepared statement*) e só em `src/data/`. `$queryRawUnsafe`, `$executeRawUnsafe` e `Prisma.raw` são barrados pelo lint. Hoje o único caso é o gráfico diário (`data-model.md`). Base: Prisma v7, "Raw queries", "SQL injection prevention".
 - O redirect usa **HTTP 302 + `Cache-Control: no-store`**, nunca 301 (o 301 é cacheado pelo navegador e perde analytics, expiração e desativação).
 - A checagem de desativação, de limite de cliques e de expiração é feita junto com o incremento, numa única operação atômica no banco (evita race condition).
 - O slug é aleatório (CSPRNG), nunca sequencial ou enumerável.

@@ -7,6 +7,8 @@ trigger: always_on
 - Linter/formatter: ESLint + Prettier, que é o padrão global do autor para JS/TS. O lint roda no CI a cada push (ver `architecture-testing-ci.md`, "CI no MVP"). As regras exatas e um eventual hook de pre-commit ficam para o setup.
   - O ESLint do Next (`eslint-config-next`) depende do `typescript-eslint`, que exige TypeScript `<6.1.0`. Por isso o projeto usa o TS 6.0.3 (ver `architecture-stack.md`).
   - Regra `import/no-extraneous-dependencies: error`. O plugin `eslint-plugin-import` já vem com o `eslint-config-next`. Ela barra a dependência fantasma: todo pacote importado precisa estar declarado no `package.json`.
+  - Regra `react/no-danger: error` (RC6): barra o `dangerouslySetInnerHTML`, primeira barreira contra XSS (ver `security-core.md`).
+  - Regra contra SQL cru inseguro (RC3): `no-restricted-properties`/`no-restricted-syntax` barrando `$queryRawUnsafe`, `$executeRawUnsafe` e `Prisma.raw` (ver `architecture-layers.md`).
   - Candidata a definir na spec: regra `no-restricted-imports` para barrar `next/*`, `@/data/*` e `@/infra/*` dentro de `src/domain/` e transformar o AD-004 em erro de lint.
 - Indentação: ver `.editorconfig` (gerado automaticamente — não duplicar valor aqui)
 

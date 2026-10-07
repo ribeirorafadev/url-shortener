@@ -32,9 +32,10 @@ Princípio: mensagem clara para o usuário, **nenhum detalhe interno** (stack tr
 |---|---|---|
 | Rate limit por minuto | Muitas tentativas. Aguarde um minuto. | não |
 | Rate limit diário | Você atingiu o limite de links por hoje. Tente amanhã. | não |
-| Upstash indisponível (fail-closed) | Não foi possível criar o link agora. Tente em alguns minutos. | sim |
+| Upstash indisponível (fail-closed), configuração do Upstash ausente ou inválida (RC4) ou IP ausente (RC5) | Não foi possível criar o link agora. Tente em alguns minutos. | sim |
 | Banco lento ou fora (timeout de 5 s) | *(a mesma acima)* | sim |
-| Safe Browsing fora do ar, lento (> 2 s) ou cota esgotada (B1, fail-closed) | Não foi possível criar o link agora. Tente em alguns minutos. | sim |
+| Safe Browsing fora do ar, lento (> 2 s), cota esgotada (B1, fail-closed) ou `SAFE_BROWSING_API_KEY` ausente (RC4) | Não foi possível criar o link agora. Tente em alguns minutos. | sim |
+| Origem canônica não resolvida (RC2, fail-fast) | *(a mesma acima)* | sim, como erro |
 | 3 colisões de slug seguidas | *(a mesma acima)* | sim, como erro |
 | Erro inesperado | Algo deu errado. Tente novamente. | sim |
 
@@ -45,6 +46,7 @@ Princípio: mensagem clara para o usuário, **nenhum detalhe interno** (stack tr
 | Token fora do formato (43 caracteres base64url) | `404`, sem consultar o banco (mesma ideia da pré-validação do slug) |
 | Token no formato, mas inexistente | `404`, a mesma página (não revela "quase acerto") |
 | Banco fora ao abrir a página | Página "Serviço indisponível. Tente novamente em instantes." |
+| Origem canônica não resolvida (RC2), necessária para o QR | A mesma página, com log como erro |
 | `deactivateLink` com token inválido | Não foi possível desativar: link não encontrado. |
 | `deactivateLink` em link já desativado | Sucesso: Link desativado. (idempotente) |
 | `deactivateLink` com banco fora | Não foi possível desativar agora. Tente em alguns minutos. |

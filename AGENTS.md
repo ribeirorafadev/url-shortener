@@ -26,15 +26,15 @@ Este arquivo é lido nativamente pelo Antigravity e importado pelo `CLAUDE.md` n
 |---|---|
 | validação da URL de destino (R1 a R7) | `.agents/context/url-validation.md` · `.agents/rules/security-blocklist.md` |
 | slug, limite de cliques, expiração | `.agents/context/link-lifecycle.md` |
-| criação de link (formulário, Server Action, card, token, QR) | `.agents/context/link-creation.md` · `.agents/context/link-lifecycle.md` · `.agents/context/error-map.md` · `.agents/rules/security-token.md` · `.agents/rules/security-rate-limit.md` |
+| criação de link (formulário, Server Action, card, token, QR, origem canônica) | `.agents/context/link-creation.md` · `.agents/context/url-validation.md` · `.agents/context/link-lifecycle.md` · `.agents/context/error-map.md` · `.agents/rules/security-token.md` · `.agents/rules/security-rate-limit.md` |
 | redirect (`src/app/[slug]/`), bots de preview, `HEAD` | `.agents/context/redirect.md` · `.agents/context/data-model.md` · `.agents/rules/security-rate-limit.md` |
 | página de gestão (`/manage/[token]`), estatísticas, desativar | `.agents/context/manage-page.md` · `.agents/context/data-model.md` · `.agents/rules/security-token.md` |
 | mensagens de erro | `.agents/context/error-map.md` |
 | banco, schema, Prisma, conexão, migrations | `.agents/context/data-model.md` · `.agents/rules/architecture-persistence.md` |
 | Google Safe Browsing | `.agents/rules/security-blocklist.md` · `.agents/context/url-validation.md` (R7) |
-| testes, Docker, CI, deploy, publicação | `.agents/rules/architecture-testing-ci.md` |
+| testes, Docker, CI, deploy, publicação, previews | `.agents/rules/architecture-testing-ci.md` · `.agents/rules/architecture-persistence.md` (migrations no build, branch do Neon por preview) |
 | dependências, versões, `package.json`, `.npmrc` | `.agents/rules/architecture-stack.md` |
-| `npm run dev`, arquivos `.env*`, `next.config.ts` | `.agents/rules/architecture-local-dev.md` · `.agents/rules/architecture-testing-ci.md` (Postgres em Docker) |
+| `npm run dev`, arquivos `.env*`, `next.config.ts` | `.agents/rules/architecture-local-dev.md` · `.agents/rules/architecture-testing-ci.md` (Postgres em Docker) · `.agents/rules/security-rate-limit.md` (trava de chaves ausentes) · `.agents/context/url-validation.md` (R3: `APP_ORIGIN`); headers globais no núcleo (`security-core.md`) |
 | escopo do produto, o que está fora do MVP | `docs/superpowers/PRD.md` |
 | spec, plano, ADR ou índice de specs | `.agents/rules/spec-workflow.md` · `docs/superpowers/PRD.md` · `docs/superpowers/ADR.md` |
 | commits, branches, PR | `.agents/rules/code-style.md` (núcleo) |

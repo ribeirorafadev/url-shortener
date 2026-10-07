@@ -15,5 +15,6 @@ Regra de negócio em `.agents/context/url-validation.md` (R7). Aqui ficam os asp
   - **restrita no console à Safe Browsing API**, para uma chave vazada não servir para outras APIs do projeto;
   - vai na query string da chamada ao Google (`?key=`), então **nunca logar a URL da requisição** ao Google.
 - **Serviço indisponível (B1): fail-closed**, com timeout de **2 s** na chamada. Com fail-open, um atacante com vários IPs poderia esgotar a cota diária de propósito e desligar a checagem quando quisesse. O redirect não depende do Google. Detalhes em `.agents/context/url-validation.md` (R7).
+- **Chave ausente ou inválida (RC4):** vale como "serviço indisponível" (criação recusada, sem chamar o Google), e o build da Vercel falha se a `SAFE_BROWSING_API_KEY` faltar. Detalhes em `security-rate-limit.md`, "Configuração ausente ou inválida".
 - **Adaptador:** fica em `src/infra/` (B2). A API key só é lida ali.
 - **Mensagem de bloqueio (B3):** texto qualificado ("suspeito"), nunca afirmando certeza, mais a linha "Advisory provided by Google" com link para `https://developers.google.com/safe-browsing/v4/advisory`, e o aviso de falso positivo e falso negativo no README. São exigências da doc "Appropriate Usage" ("User warnings"). Texto final em `.agents/context/url-validation.md` (R7).

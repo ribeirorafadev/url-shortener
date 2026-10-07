@@ -11,7 +11,7 @@ Parte do contexto de domínio, lido sob demanda pelo índice do `AGENTS.md`. Tre
   - `410 Gone` quando o link existe mas expirou, esgotou o limite ou foi desativado.
   - `429 Too Many Requests` + `Retry-After` quando o IP passa do rate limit (ver `.agents/rules/security-rate-limit.md`).
   - `503 Service Unavailable` + `Retry-After` quando o banco não responde em 5 s (`connectionTimeoutMillis`, ver `.agents/rules/architecture-persistence.md`) ou falha. O texto é fixo: "Serviço indisponível. Tente novamente em instantes." O erro é logado com o slug, nunca com o destino. Na criação, o mesmo caso vira o estado `error` com "Não foi possível criar o link agora. Tente em alguns minutos."
-  - **Corpo das respostas sem redirect (decidido em 2026-09-29):** o `404`, o `410` e a página neutra dos bots (`200`) levam um **HTML mínimo em pt-BR gerado no próprio Route Handler**: título, uma frase, CSS inline e um link "criar um novo link". Um único módulo de templates, na camada de entrada, gera essas três páginas e também as de `429` e `503`.
+  - **Corpo das respostas sem redirect (decidido em 2026-09-29):** o `404`, o `410` e a página neutra dos bots (`200`) levam um **HTML mínimo em pt-BR gerado no próprio Route Handler**: título, uma frase, CSS inline e um link "criar um novo link". Um único módulo de templates, na camada de entrada, gera essas três páginas e também as de `429` e `503`. **Os templates não têm `<script>` e não interpolam input do visitante**, só textos e status nossos (RC6; ver `.agents/rules/security-core.md`).
     - O **texto é fixo**, e nenhum dado do link (slug, destino) é interpolado no HTML, o que elimina XSS por construção.
     - Headers: `Content-Type: text/html; charset=utf-8` e `Cache-Control: no-store`.
     - **O `410` mostra o motivo, com um texto fixo por caso** (decidido em 2026-09-29): "Este link foi desativado por quem o criou.", "Este link expirou." ou "Este link atingiu o limite de acessos.". Sem data nem número de acessos, para manter "nada do link no HTML". Se mais de um motivo valer, a precedência é **desativado → expirado → esgotado**, porque a ação explícita do criador vem primeiro. O domínio devolve o motivo como tipo discriminado (ex.: `'deactivated' | 'expired' | 'exhausted'`). Descartados: mensagem genérica (a pessoa que clicou não sabe o que fazer) e motivo com detalhes (expõe escolhas do criador sem ganho).
@@ -59,7 +59,7 @@ Quando um link curto é colado no WhatsApp, Slack, Telegram, X, Facebook, Linked
 **Redirecionar** (caminho mais quente, com leituras ~100× mais frequentes que escritas). Route Handler `src/app/[slug]/route.ts`, que exporta `GET` e `HEAD`. A ordem dos passos é regra; os nomes de método no esboço (`findUnique`, `updateManyAndReturn`) são **[→ spec]**:
    ```
    1. isValidSlugFormat(slug) falhou → 404 (sem Upstash nem banco)
-   2. rate limit por IP (/64 no IPv6) → 429 se exceder; Upstash fora ou lento (>1 s) → segue (fail-open)
+   2. rate limit por IP (/64 no IPv6) → 429 se exceder; Upstash fora ou lento (>1 s), configuração ausente (RC4) ou IP ausente (RC5) → segue (fail-open)
    3. HEAD ou isPreviewBot(UA)?
       ├─ sim → só lê (findUnique): 404 | 410 com motivo | com limite → 200 página neutra | sem limite → 302 sem incrementar
       └─ não → updateManyAndReturn (atômico)
