@@ -1,0 +1,12 @@
+{
+  "qa-guard": {
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "type": "command", "command": "python3 -I qa-guard.py", "timeout": 10 }
+        ]
+      }
+    ]
+  }
+}

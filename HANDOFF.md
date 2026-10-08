@@ -1,6 +1,6 @@
 # short-url — Handoff
 
-**Atualizado em:** 2026-10-08 (fim do dia) · **Versões anteriores:** `git log -- HANDOFF.md`. A última versão longa, com o detalhe de cada achado da releitura crítica, é `git show 5105255:HANDOFF.md`; a do histórico das sessões de design é `git show a944166:HANDOFF.md`.
+**Atualizado em:** 2026-10-08 (fim da sessão do harness) · **Versões anteriores:** `git log -- HANDOFF.md`. A versão do fim do design (antes do harness) é `git show cc83c4b:HANDOFF.md`; a longa, com o detalhe da releitura crítica, `git show 5105255:HANDOFF.md`; a do histórico das sessões de design, `git show a944166:HANDOFF.md`.
 
 ## Goal
 
@@ -8,29 +8,28 @@ Encurtador de links com analytics: o primeiro projeto do portfólio full-stack d
 
 ## Onde estamos
 
-- **Fase:** fim do design pelo **caminho arquitetural** do `superpowers:brainstorming`. **Nenhum código escrito, de propósito.** Hard-gate: spec aprovada ✓ → três planos aprovados → só então código.
-- **Design 100% fechado em 2026-10-07**, incluindo a releitura crítica (RC1 a RC10 e os baixos B-1 a B-4).
-- **Lacunas achadas ao preparar a spec, fechadas em 2026-10-07:** S1 (migration no `buildCommand` do `vercel.json`, client gerado no `postinstall`, `db:migrate` local/CI e, por consequência, `process.env` em vez do `env()` no `prisma.config.ts`), S2 (AD-004 por lint com lista branca), S3 (sufixos de host do Safe Browsing pela regra da v4, sem a Public Suffix List), S4 (cache em memória das respostas do Google, exigido pelo protocolo; o fail-closed continua como desvio consciente) e S5 (gráfico próprio no servidor, sem Recharts). Nenhuma passa no critério de ADR. A varredura de todos os arquivos foi feita e eles já refletem S1 a S5.
-- **Spec do MVP escrita em 2026-10-07 e APROVADA pelo Rafael em 2026-10-08** (`docs/superpowers/specs/2026-10-07-short-url-mvp-design.md`, status `Aprovada`, ~66 mil caracteres, 16 seções). Os trechos `[→ spec]` saíram de `.agents/` e viraram referências "spec, §N". Com a aprovação, os detalhes de "como" que a spec acrescentou também estão aprovados (lista em "Próximos passos", item 1).
-- **Feito em 2026-10-08, depois da aprovação** (pedido do Rafael, sem implementação): `README.md` mínimo na raiz (validado por teste de aceite); `.agents/context/README.md` apagado (duplicava o índice do `AGENTS.md`); Excalidraw redesenhado do zero, com 7 seções, ícones e a seção RF/RNF (ver "Excalidraw"); `.superpowers/` passou a ser ignorado pelo Git (o HANDOFF já dizia que o *ledger* era ignorado, mas o `.gitignore` não tinha a regra).
-- **Diagramas exportados em 2026-10-08:** `docs/diagrams/short-url-design.svg` (vai para o README) e `.png` (para compartilhar fora do GitHub), com link no README da raiz e no `docs/README.md`.
-- **Próxima etapa: PENDÊNCIA PRIMÁRIA — o subagente revisor de fatias** (seção própria abaixo). O Rafael quer criá-lo antes da implementação, mas avisou que "temos uma longa conversa pela frente" e **ainda não decidiu nada**. Depois dele vem o `superpowers:writing-plans`. **Sem implementação e sem planos até o Rafael pedir.**
+- **Design:** 100% fechado (2026-10-07), incluindo a releitura crítica (RC1 a RC10, B-1 a B-4) e as lacunas S1 a S5.
+- **Spec do MVP:** **aprovada** em 2026-10-08 (`docs/superpowers/specs/2026-10-07-short-url-mvp-design.md`, 16 seções).
+- **Harness de execução:** **decidido, implementado e medido** em 2026-10-08 (D1 a D7, seção "Harness de execução"). Há dois agentes prontos, cada um com trava e testes próprios: o **executor** (Sonnet 5.5, Claude Code) e o **QA exploratório** (Gemini 3.8 Flash, `agy`).
+- **Nenhum código da aplicação escrito, de propósito.** Hard-gate: spec aprovada ✓ → harness ✓ → **três planos aprovados** → só então código.
+- **Próxima etapa: os planos (`superpowers:writing-plans`), SÓ QUANDO O RAFAEL MANDAR** (reafirmado por ele em 2026-10-08). Não começar por iniciativa própria.
 
-## Como retomar
+## Como retomar (sessão limpa)
 
 1. `git status -sb` deve mostrar `main...origin/main` limpo. Se não estiver, pergunte ao Rafael antes de mexer.
-2. O brainstorming terminou (spec aprovada). **Comece pela "Pendência primária" (revisor de fatias), uma decisão por mensagem. Não invoque `superpowers:writing-plans` nem escreva código sem o Rafael pedir.** Quando ele pedir os planos: `superpowers:writing-plans`, três planos, um por fatia. Mudança na spec depois de aprovada: edite a spec (e a regra, se mudar o quê ou o porquê), rode a autorrevisão e peça nova aprovação.
-3. A sessão já carrega o **núcleo** (`AGENTS.md`, `architecture-layers`, `security-core`, `code-style`). **Antes de tratar um tema, leia os arquivos que o índice do `AGENTS.md` aponta.** Este HANDOFF é só um índice de estado, pendências e forma de trabalhar.
-4. Decisões novas: **uma por mensagem**, no formato de "Como apresentar decisões". Ao fechar, registre **na hora** no arquivo-fonte e marque aqui.
-5. Ao fim de cada bloco: **varredura de todos os arquivos afetados → atualização → HANDOFF → commit e push**, com autorização do Rafael na mensagem (um Ctrl+Z já apagou trabalho não commitado).
-6. Regras do harness: cada arquivo de `.agents/` com **no máximo 12 mil caracteres** (`wc -m`); regra nova sob demanda leva `trigger: model_decision` + `description`, entra no índice do `AGENTS.md` e **não** ganha link em `.claude/rules/` (só o núcleo tem link); detalhe de implementação novo vai **direto para a spec**, e a regra cita "spec, §N" (`spec-workflow.md`, §8).
+2. A sessão já carrega o **núcleo** (`AGENTS.md`, `architecture-layers`, `security-core`, `code-style`). **Antes de tratar um tema, leia os arquivos que o índice do `AGENTS.md` aponta.** Para planos e execução: **`.agents/rules/execution-workflow.md` primeiro**, depois `spec-workflow.md`.
+3. Confira que o executor existe para o Claude Code: o tipo `executor` aparece entre os agentes do `Agent`. Se não aparecer, peça ao Rafael `/agents` ou reiniciar a sessão (os subagentes carregam no início).
+4. **Aguarde o comando do Rafael.** Quando ele mandar começar: `superpowers:writing-plans`, três planos, um por fatia, escritos **para o executor** (ver "Próximos passos"). Antes da fatia 1, a pendência de setup do **Docker** precisa ser decidida com ele.
+5. Decisões novas: **uma por mensagem**, no formato de "Como apresentar decisões". Ao fechar, registre **na hora** no arquivo-fonte e marque aqui.
+6. Ao fim de cada bloco: **varredura de todos os arquivos afetados → atualização → HANDOFF → commit e push, só quando o Rafael mandar na mensagem** (um Ctrl+Z já apagou trabalho não commitado).
+7. Regras do harness de documentação: cada arquivo de `.agents/` com **no máximo 12 mil caracteres** (`wc -m`; o `execution-workflow.md` está com ~11,7 mil, então mudança grande nele pede dividir o arquivo), e a `description` de uma regra com **no máximo 250** (limite do editor do Antigravity); regra nova sob demanda leva `trigger: model_decision` + `description`, entra no índice do `AGENTS.md` e **não** ganha link em `.claude/rules/` (só o núcleo tem); detalhe de implementação novo vai **direto para a spec**, e a regra cita "spec, §N" (`spec-workflow.md`, §8).
 
 ## Fontes da verdade
 
-- **Índice "ao mexer em X, leia Y":** `AGENTS.md` (também traz o glossário). Os 7 arquivos de `.agents/context/` estão listados nesse índice (o README da pasta foi apagado em 2026-10-08 por duplicá-lo).
+- **Índice "ao mexer em X, leia Y":** `AGENTS.md` (também traz o glossário).
 - **Núcleo** (~24 mil caracteres, sempre carregado): `AGENTS.md`, `.agents/rules/architecture-layers.md`, `.agents/rules/security-core.md`, `.agents/rules/code-style.md`.
-- **Sob demanda:** os demais `.agents/rules/*.md` e `.agents/context/*.md`, mais o PRD e o ADR (`docs/superpowers/ADR.md`, **append-only: nunca editar**).
-- **Rastro das decisões:** toda decisão foi registrada no arquivo-fonte com o rótulo e a data (ex.: `(RC4, decidido em 2026-10-07)`, `(B1, …)`, `(P5, …)`, `(T3, …)`). Para achar onde está uma decisão: `grep -rn "RC4" .agents docs`.
+- **Sob demanda:** os demais `.agents/rules/*.md` (inclusive `execution-workflow.md`, criado em 2026-10-08) e `.agents/context/*.md`, mais o PRD e o ADR (`docs/superpowers/ADR.md`, **append-only: nunca editar**).
+- **Rastro das decisões:** cada decisão está no arquivo-fonte com rótulo e data (ex.: `(RC4, decidido em 2026-10-07)`). Para achar: `grep -rn "RC4" .agents docs`. **Atenção à colisão de rótulos:** os D1 a D7 do harness (`execution-workflow.md`, formato `**D4 —`) não são o D1 antigo de persistência (`architecture-persistence.md`); busque com `grep -n "D4 —" .agents/rules/execution-workflow.md`.
 
 ## Índice das decisões
 
@@ -40,7 +39,7 @@ Todas debatidas com trade-offs e aprovadas pelo Rafael. **Não reabrir sem motiv
 |---|---|---|
 | Base: Next na Vercel, Prisma + Neon, sem login (token), domínio puro | AD-001 a AD-004 | `ADR.md` |
 | Versões (Node 24, Next 16.3.8, Prisma 7.10.0, TS 6.0.3), npm endurecido, `qrcode@1.5.4`, `@vercel/functions`; **Recharts e `tldts` recusados** | S3, S5 | `architecture-stack.md` |
-| Banco: adapter `pg` + pool, timeouts, `@next/env` na CLI; **`migrate deploy` no `buildCommand` do `vercel.json` + branch do Neon por preview**, `postinstall`, `db:migrate`, `DATABASE_URL_UNPOOLED`, migration só aditiva | D1, 10e, RC1, S1 | `architecture-persistence.md` |
+| Banco: adapter `pg` + pool, timeouts, `@next/env` na CLI; **`migrate deploy` no `buildCommand` do `vercel.json` + branch do Neon por preview**, `postinstall`, `db:migrate`, `DATABASE_URL_UNPOOLED`, migration só aditiva | D1 (antigo), 10e, RC1, S1 | `architecture-persistence.md` |
 | Modelo de dados; gráfico diário com `$queryRaw` (único SQL cru); total = `click_count` | RC3, RC8 | `data-model.md`, `architecture-layers.md` |
 | URL de destino R1 a R7, IDN, **origem canônica** (`resolveAppOrigin`), **IPv6 numérico recusado**, `url.href` | P4, P6, RC2, RC10, B-2 | `url-validation.md` |
 | Slug, limite, expiração, **relógio `Clock`** | P7, B-1 | `link-lifecycle.md` |
@@ -54,69 +53,99 @@ Todas debatidas com trade-offs e aprovadas pelo Rafael. **Não reabrir sem motiv
 | `npm run dev` sem chaves (`USE_LOCAL_FAKES` no `.env.development.local`, duas travas) | — | `architecture-local-dev.md` |
 | Lint (**AD-004 por lista branca**), kebab-case, Conventional Commits, branches e fatias, PR | S2 | `code-style.md` |
 | Formato de spec/plano/ADR, regra × spec | — | `spec-workflow.md` |
+| **Execução dos planos:** testes do Opus, executor Sonnet, travas, QA do Gemini, quando o QA roda, checklist da revisão | D1 a D7 (harness) | `execution-workflow.md` |
 
 **Defeitos já corrigidos:** o SQL atômico não checava `deactivated_at` (2026-09-30); o `USE_LOCAL_FAKES` estava no `.env.local`, que o `next build` também lê (2026-10-02).
 
-**Limitações documentadas** (entram na spec e no README; não são pendências): scanners de e-mail consomem links com limite; iPad aparece como DESKTOP; `click_count` pode divergir dos eventos; logs da Vercel e histórico guardam o token; a blocklist não pega golpe novo nem site que vira golpe depois; resposta perdida na rede perde o token; a R3 não cobre os endereços por deploy e por branch (RC2); a CSP aceita `'unsafe-inline'` (RC6); o `x-real-ip` só é confiável na Vercel (RC5); a R4 não resolve DNS (RC10).
+**Limitações documentadas** (entram no README; não são pendências): scanners de e-mail consomem links com limite; iPad aparece como DESKTOP; `click_count` pode divergir dos eventos; logs da Vercel e histórico guardam o token; a blocklist não pega golpe novo nem site que vira golpe depois; resposta perdida na rede perde o token; a R3 não cobre os endereços por deploy e por branch (RC2); a CSP aceita `'unsafe-inline'` (RC6); o `x-real-ip` só é confiável na Vercel (RC5); a R4 não resolve DNS (RC10).
+
+## Harness de execução (decidido, implementado e medido em 2026-10-08)
+
+**Origem:** o Rafael recusou o "subagente revisor" (Fable, exagero; Opus revisando o próprio código, erro) e trocou por um ciclo **maker-checker com TDD**. Regra completa: `.agents/rules/execution-workflow.md`.
+
+### Quem faz o quê
+
+| Papel | Quem | Onde |
+|---|---|---|
+| Escreve o teste (vermelho) e os fakes, revisa, faz commit quando mandado | **Opus 5.5 (high)**, sessão principal | — |
+| Implementa o código de produção | **Sonnet 5.5 (high)**, subagente `executor` | `.agents/agents/executor/` + symlink `.claude/agents/executor.md` |
+| QA exploratório no navegador, só leitura | **Gemini 3.8 Flash (High)** via `agy` | `.agents/agents/qa-explorer/` |
+| Revisa e valida cada tarefa; manda commit e push | **Rafael** | — |
+
+### Ciclo de cada tarefa (passo a passo)
+
+1. **Teste (D1):** o Opus lê a tarefa do plano e os arquivos de contexto dela, escreve o teste a partir da spec (fakes e auxiliares em `__fakes__/` ao lado do código) e **roda para ver falhar pelo motivo certo**.
+2. **Delegar (D2, D3):** ferramenta `Agent` com `subagent_type: "executor"` (roda em segundo plano; o resultado chega como notificação). O pedido traz: a tarefa, as seções da spec, os arquivos de teste, os arquivos a criar e o comando de verificação. O executor devolve `STATUS: VERDE | BLOQUEADO`, arquivos, verificação, decisões, o que a trava negou e dúvidas sobre o teste. Para devolver uma correção, continue o mesmo agente com `SendMessage`.
+3. **Verificar (D7, item 1):** o Opus roda ele mesmo o teste da tarefa, `npm test`, `npm run lint` e `npm run typecheck`. O relato do executor não é evidência.
+4. **QA (D6, D6d), só se o diff tocar `src/app/`, `src/components/` ou `next.config.ts`** (e uma passada no fim de cada fatia):
+   - o Opus sobe `npm run dev` com `USE_LOCAL_FAKES=true` e o Postgres do Docker (banco de dev, nunca o `shorturl_test`);
+   - `sh .agents/agents/qa-explorer/worktree-fingerprint.sh` antes;
+   - `agy --agent qa-explorer --model gemini-3.8-flash-high -p "<URL base, o que a tarefa entregou, áreas do catálogo>"` (**o prompt vai por último**; áreas: headers e páginas, criação, redirect, gestão);
+   - fingerprint depois: **hash diferente = descarta o QA**;
+   - defeito achado → o Opus escreve o teste vermelho que o reproduz → volta ao passo 2.
+5. **Revisão (D7):** checklist fixo de **9 itens em toda tarefa** (verde de verdade; testes intactos; sem trapaça; escopo; spec; camadas AD-004; segurança; erros; QA), item que não se aplica = "n/a" com motivo. Veredito `APROVADO` ou `DEVOLVIDO` com `arquivo:linha`, item violado e o que corrigir, sem o Opus escrever a correção. **Na 3ª devolução, para e leva ao Rafael.**
+6. **Pausa com o Rafael (por tarefa):** o teste escrito, o que o executor entregou, as devoluções e o porquê, o resultado do QA, o placar do checklist (ex.: `9/9`) e a mensagem de commit proposta. Explicar como cada peça se encaixa nas decisões (ele precisa explicar tudo numa entrevista).
+7. **Commit e push só quando o Rafael mandar.** O executor nunca faz commit (a trava barra).
+8. **Fim da fatia (D5):** passada de QA da fatia inteira, depois revisão da branch inteira pelo Opus **junto com o Rafael**, e só então o PR.
+
+Progresso num *ledger* em `.superpowers/sdd/<plano>/progress.md` (ignorado pelo Git). Base: `superpowers:subagent-driven-development`, com os ajustes do Rafael, que prevalecem sobre a skill: pausa a cada tarefa, o Opus revisa na sessão principal, executor fixo (a skill troca de modelo na 4ª rodada).
+
+### As travas (D4 e D6c)
+
+- **Executor** (`executor-guard.py`, hook `PreToolUse` no frontmatter, `matcher: "*"`): lista branca e fail-closed.
+  - Ferramentas: só `Read`, `Grep`, `Glob`, `Edit`, `Write`, `Bash` e `SubagentHandback` (a que entrega o relatório no auto mode).
+  - Escrita barrada: testes (`*.test.*`, `*.spec.*`, `tests/`, `__tests__/`, `__fakes__/`, `vitest.*`), `.agents/`, `docs/`, `.claude/`, `.git/`, `AGENTS.md`, `CLAUDE.md`, `HANDOFF.md`, `package.json`, lockfiles, `.npmrc`, `.gitignore`, `.env*` (o `.env.example` é liberado) e tudo fora do projeto (inclusive via symlink).
+  - Leitura barrada: `.env*`, `*.pem`, `*.key` e fora do projeto.
+  - Bash por lista branca: `npm test`/`run`/`ci`; `npx` só com `vitest`, `tsc`, `eslint`, `prettier`, `prisma`, `next`; `git` só leitura; utilitários de leitura; `mkdir`, `touch`, `mv`, `cp`, `rm` (sem `-r`) fora dos caminhos protegidos. Nega `$`, crase, subshell, várias linhas, `cd`, redirecionamento para arquivo, `vitest -u`, `prettier --write`/`eslint --fix` sem arquivo explícito, opções que escrevem arquivo (`-o`, `--outputFile`, `--outDir`, `--target-directory=`) e caminhos com `..` que saiam do projeto.
+  - O hook **não emite nada quando passa** (um `allow` explícito pularia o sistema de permissões) e termina em `|| exit 2` (hook que quebra com outro código deixaria a ferramenta passar).
+  - **Protege contra engano, não contra má-fé**; contra isso valem a revisão e o CI. Se o executor esbarrar num comando legítimo, ele relata e o Opus ajusta a lista **com teste primeiro**.
+- **QA** (`agent.md` com `tools: [view_file]` + `inheritMcp: true`; `hooks.json` + `qa-guard.py`): só lê os schemas do Playwright e usa o navegador em `localhost`, `127.0.0.1` e `[::1]`; nega escrita, outros MCP, `browser_run_code_unsafe` e `browser_file_upload`. Camada B: `worktree-fingerprint.sh`. Links criados no QA apontam só para `https://example.com/` (RFC 2606). Limite aceito: um clique ou o 302 levam o navegador para fora do `localhost`.
+
+### Medições (2026-10-08)
+
+- **QA de ponta a ponta:** navegador, JavaScript e formulário funcionaram; escrita, `view_file` em `AGENTS.md`, `browser_run_code_unsafe`, `example.com` e `context7` negados; fingerprint igual.
+- **Hook que quebra no `agy`:** bloqueia a ferramenta (fail-closed nativo). No Claude Code, o `|| exit 2` foi testado com o Python ausente: código 2, ação negada.
+- **Executor de ponta a ponta** (sessão principal em auto mode, o hook do subagente rodou): sonda de 14 ações escolhidas para serem inofensivas se a trava falhasse. **6 permitidas passaram** (`Write`/`Read` de arquivo novo, `git status`, `echo > /dev/null`, `rm` do próprio arquivo) e **7 proibidas foram negadas pelo motivo certo** (`Write` em teste, `docs/` e `.agents/`; `git commit --dry-run`; `npm install --dry-run`; `echo > arquivo`; `ls ~`). O `Grep` não rodou porque a sessão principal não tem `Grep`/`Glob`, e aí o subagente também não recebe: o executor busca com `grep`/`rg` pelo Bash, e o caso do `Grep` está coberto pelos testes da trava. **Fingerprint idêntico antes e depois; nenhum commit.**
+- **Achado da medição:** a primeira rodada perdeu o relatório do executor, porque a trava negava o `SubagentHandback`. Corrigido com teste (`test_passes_delivering_the_final_report`) e com a ferramenta no `tools:`.
+- **Revisão de segurança antes do push:** `uvx ruff check` com as regras `S` (Bandit), `B`, `PLW`, `BLE`, `E`, `F`, `UP`, `PTH` e `RUF`: sem achados (os `noqa` restantes são intencionais e comentados: `BLE001` no fail-closed, `S603` no subprocess com argumentos fixos). Revisão manual achou e fechou, com teste primeiro: `cat ~/...` e `/etc/...` pelo Bash, `cat ../fora`, `Glob` com `..`, `cp --target-directory=`, `eslint -o`, `vitest --outputFile`, `tsc --outDir`. Os dois avisos do SonarQube do Rafael (`subprocess.run` sem `check`, senha do Postgres num teste) foram corrigidos; o caminho absoluto da máquina do Rafael saiu do `qa-guard.test.py` (agora é relativo ao projeto).
+- **Testes das travas:** `cd .agents/agents/executor && python3 -I executor-guard.test.py` (31) e `cd .agents/agents/qa-explorer && python3 -I qa-guard.test.py` (14).
+
+### Fatos verificados que o harness usa
+
+- **Claude Code** (Docs, "Hooks reference", "Create custom subagents", "Tools reference"): `PreToolUse` recebe `tool_name`, `tool_input`, `cwd` (os caminhos das ferramentas de arquivo chegam absolutos); nega com `hookSpecificOutput.permissionDecision: "deny"`; `deny` de hook vale até no auto mode; o frontmatter aceita `model`, `effort`, `tools`, `disallowedTools`, `permissionMode`, `hooks`, `isolation`; `disallowedTools: Bash(git push *)` remove o Bash inteiro; com a sessão principal em auto mode, o subagente herda o modo; **hooks do frontmatter exigem a pasta confiável e não rodam num `claude -p`**; os subagentes carregam no início da sessão; `isolation: worktree` nasce do branch padrão (descartado).
+- **`agy` 1.3.1:** o `-p` exige o prompt por último; só carrega os MCP de `~/.gemini/config/mcp_config.json` (o do `agy mcp`); `--mode plan` não bloqueia escrita no `-p` e `--sandbox` só bloqueia o terminal; agentes em `.agents/agents/<nome>/agent.md` (`tools` como lista branca, sem `call_mcp_tool`; o MCP vem por `inheritMcp: true`); `hooks.json` roda com `sh -c` no diretório do arquivo e responde `{"decision": "allow|deny", "reason": ...}`; `agy models` lista `gemini-3.8-flash-high`. O `agy` tolera o `agent.md` do executor (frontmatter do Claude Code) na mesma pasta: o QA continuou rodando.
+- **Configuração global (fora do repo):** Playwright MCP fixado em `@playwright/mcp@0.0.83 --headless` no `agy mcp` e no `agy` interativo, e `@0.0.83` no Claude Code (escopo user). O `agy` do Rafael está em `always-proceed` e **não deve ser endurecido** (a opção C foi testada e negava até o navegador).
 
 ## Prazo, fatias e execução
 
-- **Prazo:** a semana começa **quando a spec e os três planos forem aprovados**; no máximo 4 a 5 h por dia; **nenhum corte de escopo**. Estimativa não oficial: 28 a 35 h.
+- **Prazo:** a semana começa **quando os três planos forem aprovados**; no máximo 4 a 5 h por dia; **nenhum corte de escopo**. Estimativa não oficial: 28 a 35 h.
 - **Três fatias, cada uma com plano, branch e PR próprios** (`code-style.md`, "Branches e fatias"):
   1. `feat/mvp-1-base`: setup, Docker, CI, ruleset, Vercel, Neon e domínio com testes. **Primeira PR, feita em conjunto** (o Rafael nunca usou PR: abrir pelo site do GitHub, ler "Files changed", acompanhar o CI, corrigir na mesma branch).
   2. `feat/mvp-2-create-redirect`: criação (Google e rate limit), redirect, teste de concorrência, testes HTTP.
   3. `feat/mvp-3-manage`: página de gestão e README.
-- **Execução inline** (`superpowers:executing-plans`), com TDD, na branch da fatia. **Ajustes do Rafael:** pausa curta ao fim de **cada tarefa** (o que foi feito, o teste que falhou e passou, o commit), e **comentários inline** explicando como cada peça se encaixa nas decisões. Progresso num *ledger* em `.superpowers/sdd/<plano>/progress.md` (ignorado pelo Git).
-- **Cada tarefa dos planos lista os arquivos de contexto que precisa ler.**
+- QA por fatia (D6d): na 1, só as tarefas da home provisória e do `next.config.ts`; na 2, criação, redirect, páginas de status e rate limit; na 3, gestão, gráfico e desativação.
 
 ## Próximos passos
 
-**1. Spec aprovada em 2026-10-08** (`docs/superpowers/specs/2026-10-07-short-url-mvp-design.md`):
+**1. Spec aprovada em 2026-10-08:**
 - Estrutura: §1–3 contexto; §4 arquitetura (árvore de arquivos, ponto de montagem, logs); §5 domínio; §6 dados; §7 Safe Browsing; §8 entrada; §9 configuração; §10 erros; §11 testes; §12 fatias; §13 limitações; §14 notas sobre o AD-004; §15 alternativas; §16 requisitos (RF01–RF14, RNF01–RNF12).
-- **Detalhes de "como" acrescentados pela spec e aprovados com ela** (não reabrir sem motivo novo): referrers em top 10 + "outros" (§5.9); R4 também recusa `.local`, `.home.arpa`, `.internal` e todas as faixas IPv4 de uso especial da RFC 6890 (§5.5); entrada `site.com:8080/x` cai na R1 (§5.5); dois bancos no container, `shorturl` e `shorturl_test` (§9.7); textos das páginas 404, 429 e da prévia de bot (§8.6); `poweredByHeader: false` (§9.4); gestão com banco fora responde 200 (§8.5, §13); detalhes `CANARY`/`FRAME_ONLY` ignorados no Safe Browsing (§7.1); `RedirectService` novo no domínio (§5.8, §14); `UrlThreatChecker` devolve `'unavailable'` em vez de lançar (§5.2); testes nunca leem `.env*` e recusam rodar fora de `127.0.0.1`/`localhost` (§9.8).
-- Itens **(conferir na tarefa)**, que os planos precisam transformar em passo de verificação: `select` no `updateManyAndReturn` e um único `UPDATE … RETURNING` (senão `$queryRaw`); erros de conectividade do Prisma/`pg` (§6.5); API do `@upstash/ratelimit` (ler o código publicado); padrões dos UAs de bots; padrões da lista branca do ESLint; `revalidatePath` na desativação; `404` real da gestão sem `loading.tsx`; tipo do `defineConfig` com URL ausente.
-- Valores de setup deixados em aberto de propósito: `<MAJOR>` do Postgres e `<SHA completo>` das ações do CI; região da função, do Neon e do Upstash (a mesma para os três, §9.11).
-- O status muda para `Em andamento` quando a implementação da fatia 1 começar (`specs/README.md`).
+- Acrescentado em 2026-10-08 (§4.1): fakes e auxiliares de teste em `__fakes__/`, protegidos pela trava do executor.
+- **Detalhes de "como" aprovados com a spec** (não reabrir sem motivo novo): referrers em top 10 + "outros" (§5.9); R4 também recusa `.local`, `.home.arpa`, `.internal` e as faixas IPv4 de uso especial da RFC 6890 (§5.5); `site.com:8080/x` cai na R1 (§5.5); dois bancos no container, `shorturl` e `shorturl_test` (§9.7); textos das páginas 404, 429 e da prévia de bot (§8.6); `poweredByHeader: false` (§9.4); gestão com banco fora responde 200 (§8.5, §13); `CANARY`/`FRAME_ONLY` ignorados (§7.1); `RedirectService` no domínio (§5.8, §14); `UrlThreatChecker` devolve `'unavailable'` (§5.2); testes nunca leem `.env*` e recusam rodar fora de `127.0.0.1`/`localhost` (§9.8).
+- Itens **(conferir na tarefa)**, que os planos precisam virar passo de verificação: `select` no `updateManyAndReturn` e um único `UPDATE … RETURNING` (senão `$queryRaw`); erros de conectividade do Prisma/`pg` (§6.5); API do `@upstash/ratelimit` (ler o código publicado); padrões dos UAs de bots; padrões da lista branca do ESLint; `revalidatePath` na desativação; `404` real da gestão sem `loading.tsx`; tipo do `defineConfig` com URL ausente.
+- Valores de setup em aberto de propósito: `<MAJOR>` do Postgres e `<SHA completo>` das ações do CI; região da função, do Neon e do Upstash (a mesma para os três, §9.11).
+- O status da spec muda para `Em andamento` quando a fatia 1 começar (`specs/README.md`).
 
-**2. Quando o Rafael pedir (não antes):** fechar a "PENDÊNCIA PRIMÁRIA" (revisor de fatias) → `superpowers:writing-plans` para os **três planos** (`docs/superpowers/plans/`, um por fatia, com **Branch de Trabalho** e os arquivos de contexto de cada tarefa) → revisão do Rafael → execução inline da fatia 1. Spec e planos vão direto na `main`.
+**2. Quando o Rafael mandar (não antes): os planos.**
+- `superpowers:writing-plans`, **três planos** em `docs/superpowers/plans/`, um por fatia, no formato do `spec-workflow.md` §7 (cabeçalho com **Branch de Trabalho**; o aviso "Para executores agenticos" já aponta para o `execution-workflow.md`).
+- **Escritos para o executor:** cada tarefa diz os arquivos de contexto a ler, o teste que o Opus escreve primeiro (caminho e casos), os arquivos de produção que o executor cria, o comando de verificação, se o QA roda (gatilho D6d) e o critério de pronto. Tarefas pequenas, uma peça por vez (o Rafael acompanha e revisa cada uma).
+- As tarefas de setup da fatia 1 que mexem em `package.json`, `.npmrc`, `.gitignore`, configs do Vitest ou `.github/` com dependências são do **Opus** (a trava barra o executor); o plano diz quem faz cada uma.
+- Revisão do Rafael → aprovação → a semana começa → execução da fatia 1 na branch `feat/mvp-1-base`. Spec e planos vão direto na `main`.
 
-**3. Na fatia 1 (harness, etapa 2; não antecipar):** hooks quando existirem `lint`, `typecheck` e `test` (skill `update-config`; candidato: medir o limite de 12 mil caracteres); o revisor de fatias saiu daqui e virou a "Pendência primária"; skills só quando algo se repetir (`superpowers:writing-skills`); `paths:`/`glob` só para arquivo que o agente comprovadamente deixe de ler.
-
-**Tópicos levantados pelo Rafael em 2026-10-08:**
-1. ✓ **READMEs de `.agents/`:** `context/README.md` apagado; os de `agents/` e `skills/` mantidos por enquanto (o Git não versiona pasta vazia, e eles explicam como ligar agente/skill nas duas ferramentas).
-2. ✓ **Excalidraw:** atualizado e redesenhado (seção "Excalidraw" abaixo).
-3. ✓ **README da raiz:** mínimo e honesto, sem "como rodar"; a versão completa continua sendo entrega da fatia 3.
-4. **Agentes do harness** → virou a seção **"PENDÊNCIA PRIMÁRIA"**, logo abaixo.
-
-## PENDÊNCIA PRIMÁRIA — subagente revisor de fatias (nada decidido)
-
-**O que é:** um subagente com instruções fixas que, ao fim de uma fatia, lê o diff da branch contra a spec e as regras e devolve os problemas antes do PR. Não escreve código. Complementa a revisão do Rafael no "Files changed". Em 2026-10-08 o Rafael pediu para criá-lo **agora, antes dos planos**, e depois pausou: **todas as decisões abaixo estão abertas**. Recomendação já dada: **só este agente por enquanto** (outros, sem tarefa repetida, viram manutenção sem uso).
-
-**Decisões em aberto (uma por mensagem, formato de "Como apresentar decisões"):**
-- **R1 — modelo** (apresentada em 2026-10-08, sem resposta). Recomendação: **A, Fable 5.1**.
-
-  | Opção | Onde | US$/1M (entrada/saída) | Para o revisor |
-  |---|---|---|---|
-  | A. Fable 5.1 | subagente do Claude Code (`model: fable`) | 10 / 50 | mais capaz que quem escreve o código (Opus 5.5) |
-  | B. Opus 5.5 | `model: opus` | 4 / 20 | mesmo modelo que escreve: repete pontos cegos |
-  | C. Sonnet 5.5 | `model: sonnet` | 2 / 10 | abaixo de quem escreve |
-  | D. Gemini 3.1 Pro (High) | `agy -p --model gemini-3.1-pro-high` | fora da conta Anthropic | outra família (olhar independente), fora do Claude Code; boa 2ª opinião opcional |
-
-  Motivo da A: roda ~3 vezes no projeto (uma por fatia), então o custo pesa pouco e a capacidade extra paga na revisão. Ponto que o agente não vê: se o Rafael usa assinatura, o Fable consome o limite mais rápido.
-- **R2 — um arquivo para as duas ferramentas ou dois.** O Claude Code aceita `model: fable`; o `agy` não tem Fable (tem `claude-opus-5-5-{low,medium,high}`, `claude-sonnet-5-5-*`, `gemini-3.1-pro-{low,high}`, `gemini-3.{6,7,8}-flash-*`, `gpt-oss-120b-medium`). Um *symlink* único (padrão do `.agents/agents/README.md`) obriga o mesmo `model` nas duas.
-- **R3 — ferramentas do revisor:** só leitura (`tools: Read, Grep, Glob`) ou com `Bash` para rodar lint/testes (e o risco de ele mexer em algo).
-- **R4 — quando roda:** fim de cada fatia antes do PR (manual), sob demanda, ou também a cada tarefa.
-- **R5 — o que confere (checklist):** camadas do AD-004, `security-core`, conformidade com a spec da fatia, testes exigidos pela spec §11, textos do `error-map.md`, token/segredo/URL de destino fora de logs, commits no formato.
-- **R6 — formato da saída:** lista por severidade, com `arquivo:linha`, a regra ou seção da spec violada e a correção sugerida.
-
-**Fatos já verificados (2026-10-08):**
-- Claude Code Docs, "Create custom subagents": `model` aceita `sonnet`, `opus`, `haiku`, `fable`, um ID completo (ex.: `claude-opus-5-5`) ou `inherit`; `tools` é lista branca e `disallowedTools` lista negra (o exemplo da doc restringe a `Read, Grep, Glob, Bash`); subagente em segundo plano perde parte das ferramentas embutidas.
-- Antigravity lê `.agents/agents/<nome>.md` ou `<nome>/agent.md`, com frontmatter próprio (`name`, `description`, `tools`, `model`); lista de modelos via `agy models`.
-- Preços: referência de modelos da Anthropic (cache de 2026-10-06): Fable 5.1 US$ 10/50, Opus 5.5 US$ 4/20, Sonnet 5.5 US$ 2/10, Haiku 5.5 US$ 0,10/0,50; todos com 1M de contexto.
+**3. Na fatia 1 (não antecipar):** hooks de projeto quando existirem `lint`, `typecheck` e `test` (skill `update-config`; candidato: medir o limite de 12 mil caracteres); skills só quando algo se repetir (`superpowers:writing-skills`); `paths:`/`glob` só para arquivo que o agente comprovadamente deixe de ler.
 
 ## Pendências de setup (anotadas, sem decisão aberta)
 
-- Instalar o Docker (hoje não há Docker nem Postgres) e escolher entre `sudo` e *rootless* (o grupo `docker` equivale a root).
+- **Instalar o Docker** (hoje não há Docker nem Postgres) e escolher entre `sudo` e *rootless* (o grupo `docker` equivale a root). Necessário já na fatia 1 (migration `init`, testes de integração) e no QA (banco de dev).
 - Versão major do Postgres ao criar o projeto no Neon (14 a 18); o `compose.yml` usa a mesma.
 - Neon-Managed Integration na Vercel, com limpeza automática de branches; confirmar a **Standard Protection** nos previews (RC1).
 - Chaves do Upstash e do Google também no ambiente **Preview** (RC4).
@@ -125,53 +154,56 @@ Todas debatidas com trade-offs e aprovadas pelo Rafael. **Não reabrir sem motiv
 - **Pré-requisito do Rafael:** projeto no Google Cloud + API key **restrita à Safe Browsing API** (`security-blocklist.md`).
 - Sugestão sem prazo: levar o padrão núcleo + índice no `AGENTS.md` para a skill `novo-projeto` do Rafael (`~/.agents/skills/novo-projeto`).
 
-## Harness (etapa 1 concluída em 2026-10-03)
+## Harness de documentação (etapa 1, concluída em 2026-10-03)
 
-Regras quebradas por assunto (commit `fbbfe7e`): núcleo sempre carregado + índice no `AGENTS.md`, o resto sob demanda; `CLAUDE.md` = `@AGENTS.md`; links em `.claude/rules/` só para o núcleo; regra = o quê e por quê, spec = como. Medição com `claude -p`: **65.459 → 39.073 tokens** de entrada. Fatos verificados: o Claude Code carrega os links de `.claude/rules/` e, com link + `@import`, o arquivo entra uma vez só; o Antigravity lê `AGENTS.md` (não o `CLAUDE.md`), usa `.agents/rules/` sem subpastas com `trigger:`, subagentes em `.agents/agents/`, skills em `.agents/skills/`, e o editor limita a regra a 12 mil caracteres.
+Regras quebradas por assunto (commit `fbbfe7e`): núcleo sempre carregado + índice no `AGENTS.md`, o resto sob demanda; `CLAUDE.md` = `@AGENTS.md`; links em `.claude/rules/` só para o núcleo; regra = o quê e por quê, spec = como. Medição com `claude -p`: **65.459 → 39.073 tokens** de entrada. Fatos verificados: o Claude Code carrega os links de `.claude/rules/` e, com link + `@import`, o arquivo entra uma vez só; o Antigravity lê `AGENTS.md` (não o `CLAUDE.md`), usa `.agents/rules/` sem subpastas com `trigger:`, subagentes em `.agents/agents/`, skills em `.agents/skills/`, e o editor limita a regra a 12 mil caracteres e a `description` a 250.
 
 ## Excalidraw (documentação visual, no navegador do Rafael)
 
-- **Estado (2026-10-08):** cena **redesenhada do zero** com 665 elementos e 7 seções: 1 · Regras de negócio (4 cards), 2 · Stack (16 blocos), 3 · System design (camadas, portas, adaptadores, serviços externos e "por que assim"), 4 · Fluxos (criar e redirecionar), 5 · Modelo de dados (tabelas, índice, enum e notas), 6 · Entrega (CI/CD e as 3 fatias), 7 · Requisitos RF/RNF (spec §16). É o resumo visual; a verdade são os `.md`. Não exportado.
-- **A cena antiga (125 elementos) está no backup `excalidraw-backup-1791469337800`** do `localStorage` do excalidraw.com, além dos 7 backups anteriores.
-- **Gerador:** a cena sai de `.superpowers/excalidraw/build-scene.js` (local, ignorado pelo Git), com o teste `test-build.js` (`node test-build.js`: IDs únicos, índices em ordem, nada fora da largura). **Próxima edição: alterar o gerador e regravar a cena inteira, não remendar elementos.** Fluxo usado: teste no Node → colar a função na página → conferir o SHA-256 de `buildScene.toString()` contra o arquivo → ensaio em `window.__newScene` → checagens de sobreposição (texto × texto, texto vazando da caixa, caixas que se cruzam) → gravar → reabrir → print.
-- **Biblioteca de ícones do Rafael:** IndexedDB `excalidraw-library-db`, store `excalidraw-library-store`, chave `libraryData` (354 itens; o painel mostra na mesma ordem, 4 por linha). Índices usados: 17 cadeado, 18 firewall, 19 usuário, 22 servidor, 23 nuvem, 41 Docker, 44 Redis, 50 `</>`, 51 Postgres, 52 GitHub, 55 janela de navegador, 63 Relational DB, 70 Cache, 280 Shield. **Não há logos de Vercel, Next.js, Google nem Node:** foram usados ícones genéricos; se o Rafael adicionar esses logos, trocar no gerador.
-- **Exportado em 2026-10-08:** `docs/diagrams/short-url-design.svg` (vetor: nítido em qualquer zoom, texto pesquisável, vai para o README) e `.png` (pixels: abre em qualquer lugar, para LinkedIn e anexos). Cada novo PNG soma ~2 MB permanentes ao histórico do Git: **reexportar só em marcos** (fim de cada fatia). O `.excalidraw` não foi exportado: a fonte da cena é o gerador.
-- **Protocolo (via `localStorage` com claude-in-chrome), só quando o Rafael pedir na própria mensagem:** ele fecha as abas do excalidraw.com → o agente abre uma aba sem tocar no canvas e confere a contagem → backup em `excalidraw-backup-<ts>` → ensaio em memória (`window.__newScene`, com asserts) → grava `excalidraw` + `version-dataState`, conferindo que a cena não mudou → fecha a aba → avisa.
-- **Armadilhas:** a página do excalidraw.com não consegue buscar arquivo de um servidor local (`fetch` para `127.0.0.1` falha sem chegar ao servidor): colar o código e conferir o hash; o tema do Rafael é escuro (as cores claras aparecem invertidas); identificar elementos por texto exato, nunca por posição; não imprimir IDs; aba em segundo plano não renderiza; a contagem cai quando o Excalidraw descarta `isDeleted`; a saída do `javascript_tool` é bloqueada com `=`, `?` ou `&` e cortada perto de 1.000 caracteres (ler em partes); o classificador nega neutralizar o `Storage.prototype.setItem` e nega gravar sem pedido explícito: **nunca tentar rota alternativa**.
+- **Estado (2026-10-08):** cena redesenhada do zero, 665 elementos, 7 seções (regras de negócio, stack, system design, fluxos, modelo de dados, entrega, requisitos RF/RNF). É o resumo visual; a verdade são os `.md`. **Não mostra o harness de execução** (não foi pedido).
+- Exportado em `docs/diagrams/short-url-design.svg` (vai para o README) e `.png` (para LinkedIn e anexos). Cada novo PNG soma ~2 MB ao histórico do Git: **reexportar só em marcos** (fim de cada fatia).
+- **Gerador:** `.superpowers/excalidraw/build-scene.js` (local, ignorado pelo Git), com o teste `test-build.js`. **Próxima edição: alterar o gerador e regravar a cena inteira, não remendar elementos.** Fluxo: teste no Node → colar a função na página → conferir o SHA-256 de `buildScene.toString()` → ensaio em `window.__newScene` → checagens de sobreposição → gravar → reabrir → print. A cena antiga (125 elementos) está no backup `excalidraw-backup-1791469337800` do `localStorage`, além de 7 backups anteriores.
+- **Biblioteca de ícones do Rafael:** IndexedDB `excalidraw-library-db`, store `excalidraw-library-store`, chave `libraryData` (354 itens). Índices usados: 17 cadeado, 18 firewall, 19 usuário, 22 servidor, 23 nuvem, 41 Docker, 44 Redis, 50 `</>`, 51 Postgres, 52 GitHub, 55 janela de navegador, 63 Relational DB, 70 Cache, 280 Shield. Sem logos de Vercel, Next.js, Google nem Node.
+- **Protocolo (claude-in-chrome + `localStorage`), só quando o Rafael pedir na própria mensagem:** ele fecha as abas do excalidraw.com → o agente abre uma aba sem tocar no canvas e confere a contagem → backup `excalidraw-backup-<ts>` → ensaio em memória com asserts → grava `excalidraw` + `version-dataState` → fecha a aba → avisa.
+- **Armadilhas:** a página não busca arquivo de servidor local (colar o código e conferir o hash); tema escuro inverte cores claras; identificar elementos por texto exato, nunca por posição; aba em segundo plano não renderiza; a saída do `javascript_tool` é bloqueada com `=`, `?` ou `&` e cortada perto de 1.000 caracteres; o classificador nega neutralizar o `Storage.prototype.setItem` e gravar sem pedido explícito: **nunca tentar rota alternativa**.
 
 ## Como apresentar decisões (o que funcionou)
 
-- **Formato:** de onde veio a decisão ("isto surgiu quando…") → **cenário concreto** ("a Maria…") → opções A/B/C em 1–2 frases com **mini linha do tempo** → **tabela curta sem jargão** → recomendação em poucas linhas + fonte numa linha. A verificação das fontes fica fora da mensagem.
-- "Explique mais a fundo": **analogia do cotidiano** → situações numeradas → tabela situação × opção com ✓/✗. Analogias com Java/Spring funcionam bem (JDBC, `PreparedStatement`, HikariCP, `@Profile("dev")`, `app.base-url`).
-- Tema abstrato (harness, estrutura): mostrar a árvore de pastas e exemplos encurtados.
-- Tecnologia nova para ele (Docker, Neon, CI, PR, CSP): explicar a peça antes das opções e separar **produção** de **computador dele**.
-- **Verificar antes de afirmar:** context7 para bibliotecas; firecrawl para docs (Vercel, Neon, Google, MDN, RFCs); `npm view` para versões; `agy -p` para o Antigravity. **Ferramenta se mede** (`claude -p --output-format json` em diretório descartável). **Biblioteca se lê no código publicado** (`npm pack <pacote>@<versão>` no scratchpad + `grep`; assim fecharam o RC4 e o RC5). Número não oficial é sinalizado.
-- Assunto fora da pauta: relatório com varredura dos arquivos antes de decidir.
-- **Delegar com teste de aceite (2026-10-08):** escrever o teste antes (ele falha), delegar a um modelo menor (Sonnet/Haiku) em segundo plano, rodar o teste e revisar o resultado. Funcionou no README e na conferência de fatos do Excalidraw.
-- **Ao especificar o "como", reler a doc oficial da API** (referência do método, não só a visão geral): assim apareceram S3 e S4, e o efeito colateral do `env()` na S1. Lacuna achada vira decisão nova, uma por mensagem, antes de escrever.
-- Perguntas de "por que aceitar esse risco?" (ex.: `'unsafe-inline'` no RC6): responder com a análise concreta de impacto e, se couber, propor reforço barato na primeira barreira.
+- **Formato:** de onde veio a decisão → **cenário concreto** → opções A/B/C em 1–2 frases com **mini linha do tempo** → **tabela curta sem jargão** → recomendação + fonte numa linha. A verificação das fontes fica fora da mensagem.
+- "Explique mais a fundo": **analogia do cotidiano** → situações numeradas → tabela situação × opção com ✓/✗. Analogias com Java/Spring funcionam bem.
+- Tema abstrato (harness, estrutura): árvore de pastas e exemplos encurtados. Tecnologia nova para ele: explicar a peça antes das opções e separar **produção** de **computador dele**.
+- **Verificar antes de afirmar:** context7 para bibliotecas; firecrawl para docs (com `formats: ["query"]` e `mode: "directQuote"`; páginas grandes vão para arquivo e se leem com `python3 -I`); `npm view` para versões; `agy -p` para o Antigravity. **Ferramenta se mede.** **Biblioteca se lê no código publicado** (`npm pack` no scratchpad + `grep`).
+- **Trava se mede de ponta a ponta** e com sondas **inofensivas se a trava falhar** (`--dry-run`, arquivo novo em vez de sobrescrever, `ls ~` em vez de ler segredo), com o fingerprint antes e depois.
+- **Teste verde de primeira não basta:** conferir o **motivo** de cada negação. Foi assim que apareceram os furos de leitura fora do projeto.
+- **Python que vai para o repo:** rodar `uvx ruff check --isolated --select S,PLW,B,E,F,UP,BLE,PTH,RUF` antes de entregar (o Rafael usa SonarQube e Ruff na IDE).
+- **Delegar com teste de aceite:** escrever o teste antes, delegar a um modelo menor, rodar o teste e revisar.
+- **Ao especificar o "como", reler a doc oficial da API** (referência do método, não só a visão geral).
+- Perguntas de "por que aceitar esse risco?": análise concreta de impacto e, se couber, reforço barato na primeira barreira.
 
 ## O que não funcionou (não repetir)
 
-- Mensagem de decisão densa, com jargão em células cheias ("não entendi nada… verbosa, confusa").
+- Mensagem de decisão densa, com jargão em células cheias.
 - Deixar edições sem commit (Ctrl+Z apagou parte do trabalho em 2026-09-30).
 - Terminar um turno sem resposta (o Rafael acha que perdeu perguntas).
-- Afirmar texto de aviso sem checar os termos do provedor (o primeiro texto da R7 violava os termos do Google).
-- Afirmar comportamento de ferramenta sem medir (os links de `.claude/rules/` "não faziam nada": faziam).
-- Registrar decisão sem testar o ciclo inteiro (o `USE_LOCAL_FAKES` no `.env.local` quebraria o `test:http`).
-- Teste de aceite com palavra proibida sem limite de palavra: proibir `MIT` sem diferenciar maiúsculas barrou "limite", e o subagente trocou o vocabulário do glossário para passar. Proibir termo com `\b` e maiúsculas, e testar também o vocabulário obrigatório.
-- Fechar regra de integração lendo só a visão geral da API: a R7 dizia "sem cache local obrigatório", mas a referência do `hashes.search` exige cache (corrigido na S4).
+- Afirmar texto de aviso sem checar os termos do provedor (a primeira R7 violava os termos do Google).
+- Afirmar comportamento de ferramenta sem medir.
+- Registrar decisão sem testar o ciclo inteiro (`USE_LOCAL_FAKES` no `.env.local`).
+- Teste de aceite com palavra proibida sem limite de palavra (`\b` e maiúsculas; testar também o vocabulário obrigatório).
+- Fechar regra de integração lendo só a visão geral da API (R7 × cache, corrigido na S4).
+- **Trava fail-closed sem pensar nas ferramentas do próprio harness:** a primeira versão negava o `SubagentHandback` e o relatório do executor sumia. Ao mudar a lista branca, conferir as ferramentas que o Claude Code injeta no subagente.
+- Propor configuração no lugar errado: "quando o QA roda" não cabe no hook (ele só vê uma chamada por vez); vai na regra e no `agent.md`.
 
 ## Repositório
 
-- Público: https://github.com/ribeirorafadev/url-shortener (`origin` via SSH, autenticado como `ribeirorafadev`). A `main` só tem documentação, commitada direto durante o design; com o setup (CI + ruleset), passa a aceitar só PR com ✓.
-- **Push só com autorização explícita do Rafael na mensagem.** Commits em Conventional Commits (descrição em pt-BR), com o trailer do Claude.
-- Tudo o que é commitado é público, inclusive este arquivo: nunca registrar segredos. `gh` e a CLI `vercel` não estão instalados. Há um `README.md` mínimo na raiz desde 2026-10-08 (status, escopo, stack, links e roadmap); o completo é entrega da fatia 3 (PRD).
+- Público: https://github.com/ribeirorafadev/url-shortener (`origin` via SSH, autenticado como `ribeirorafadev`). A `main` tem documentação e o harness (agentes, travas e testes em Python); com o setup (CI + ruleset), passa a aceitar só PR com ✓.
+- **Commit e push só com autorização explícita do Rafael na mensagem.** Conventional Commits (descrição em pt-BR), com o trailer do Claude.
+- Tudo o que é commitado é público, inclusive este arquivo: **nunca registrar segredos nem caminhos pessoais**. `gh` e a CLI `vercel` não estão instalados.
 
 ## Preferências do Rafael
 
 - pt-BR, direto, Markdown estruturado, **negrito** em termos críticos; decisão não trivial com fonte real (doc oficial, RFC, lei, OWASP).
-- Quer entender os trade-offs antes de decidir; nunca apresentar decisão como fato consumado. Às vezes pede "explique melhor o cenário" depois de fechar: é aprendizado, não dúvida. Registrar só quando ele liberar.
+- Quer entender os trade-offs antes de decidir; nunca apresentar decisão como fato consumado. Às vezes pede "explique melhor" depois de fechar: é aprendizado, não dúvida. Registrar só quando ele liberar.
 - Base em Java/Spring e segurança; aprendendo Next.js, ORM e serverless; nunca usou Docker, Neon, CI nem PR. Quer **acompanhar cada tarefa** da implementação, porque precisa explicar cada parte numa entrevista.
+- Usa SonarQube e Ruff na IDE e repassa os achados; trate como revisão de código (`superpowers:receiving-code-review`): analisar, corrigir com teste quando for comportamento, explicar quando for falso positivo.
 - Ação destrutiva: relatório primeiro (o quê, onde, risco), autorização depois.
-- Pode acionar o Antigravity CLI (`agy -p "..."`) para pesquisa web e revisão.
+- Pode acionar o Antigravity CLI (`agy -p "..."`) para pesquisa web, QA e revisão.

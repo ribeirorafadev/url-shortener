@@ -30,6 +30,7 @@ description: "Vitest, Postgres em Docker, testes HTTP, CI no GitHub Actions, dep
     - os headers globais (RC6: `Content-Security-Policy`, `X-Content-Type-Options`, `X-Frame-Options`) numa página e nas respostas 404/410 do redirect.
   - Esses testes não precisam das chaves do Upstash nem do Google: os links são gravados direto no banco, e o redirect segue sem rate limit quando o Upstash não está disponível (fail-open). Sem as chaves, o adaptador "indisponível" responde na hora, sem esperar timeout (RC4, `security-rate-limit.md`). O `test:http` define `APP_ORIGIN=http://localhost:3000`, porque a página de gestão monta o QR com a origem canônica (RC2).
   - A tela (card, copiar, `beforeunload`) fica com um roteiro manual curto. O Playwright é evolução documentada.
+    - O Playwright MCP do QA exploratório (D6b, `execution-workflow.md`) é ferramenta do harness, fora do `package.json` e do CI; não muda esta decisão.
   - Base: Next.js, "Guides: Testing": "we recommend using End-to-End Testing over Unit Testing for async components" (a página de gestão é um desses componentes).
   - Descartados:
     - só domínio + `curl` à mão, porque uma regressão de header ou do `HEAD` passaria com todos os testes verdes;

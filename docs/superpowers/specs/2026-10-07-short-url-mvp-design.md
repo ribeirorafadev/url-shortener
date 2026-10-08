@@ -85,7 +85,7 @@ Regras: `.agents/rules/architecture-layers.md` (núcleo), AD-004.
         └── unavailable-url-threat-checker.ts
 ```
 
-Os testes ficam ao lado do arquivo testado (`link-service.test.ts`); os de integração com Postgres usam o sufixo `.int.test.ts`, e os HTTP ficam em `tests/http/*.http.test.ts`.
+Os testes ficam ao lado do arquivo testado (`link-service.test.ts`); os de integração com Postgres usam o sufixo `.int.test.ts`, e os HTTP ficam em `tests/http/*.http.test.ts`. Fakes e auxiliares de teste (ex.: os repositórios em memória da §11) ficam em `__fakes__/` ao lado do código (`src/domain/__fakes__/`); a trava do executor protege essa pasta, como protege os testes (`.agents/rules/execution-workflow.md`, D4).
 
 **Rotas fixas na raiz:** só `/manage` (6 caracteres). Nenhuma rota fixa nova pode ter exatamente 7 caracteres `[A-Za-z0-9]` (B-4, `redirect.md`).
 

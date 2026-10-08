@@ -61,7 +61,7 @@ Toda spec não-trivial inclui uma seção `## Alternativas consideradas e por qu
 ```markdown
 # <Nome da Feature> — Plano de Implementação
 
-> **Para executores agenticos:** use a skill de execução de plano do seu setup (ex.: `superpowers:subagent-driven-development` ou `superpowers:executing-plans`) para implementar tarefa por tarefa. As etapas usam checkbox (`- [ ]`) para rastreamento.
+> **Para executores agenticos:** execute pelo ciclo de `.agents/rules/execution-workflow.md` (teste do Opus → executor Sonnet → QA do Gemini quando a D6d mandar → revisão D7 → pausa com o Rafael), com `superpowers:subagent-driven-development` e os ajustes de lá. As etapas usam checkbox (`- [ ]`) para rastreamento.
 
 **Objetivo:** ...
 **Arquitetura:** ...
@@ -82,3 +82,7 @@ Tasks usam `### Task N: <Nome>`, sempre com blocos `**Files:**` e `**Interfaces:
 * Os trechos marcados `[→ spec]` foram movidos para a spec do MVP em 2026-10-07, com uma referência à seção no lugar ("spec, §N"). Daqui em diante, detalhe de implementação novo vai direto para a spec; nome curto que serve de vocabulário (ex.: `isValidSlugFormat`) pode ficar na regra.
 * Motivo: cada detalhe existe num lugar só. Um SQL repetido na regra e na spec já divergiu uma vez (o UPDATE atômico sem `deactivated_at`, corrigido em 2026-09-30).
 
+
+## 9. Execução dos planos
+
+Movida em 2026-10-08 para `.agents/rules/execution-workflow.md` (testes do Opus, executor Sonnet, QA do Gemini, revisão e quando o QA roda).

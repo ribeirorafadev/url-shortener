@@ -36,5 +36,6 @@ Este arquivo é lido nativamente pelo Antigravity e importado pelo `CLAUDE.md` n
 | dependências, versões, `package.json` (scripts, `postinstall`), `.npmrc`, `prisma.config.ts` | `.agents/rules/architecture-stack.md` · `.agents/rules/architecture-persistence.md` (S1: `postinstall`, `db:migrate`, `process.env` no `prisma.config.ts`) |
 | `npm run dev`, arquivos `.env*`, `next.config.ts` | `.agents/rules/architecture-local-dev.md` · `.agents/rules/architecture-testing-ci.md` (Postgres em Docker) · `.agents/rules/security-rate-limit.md` (trava de chaves ausentes) · `.agents/context/url-validation.md` (R3: `APP_ORIGIN`); headers globais no núcleo (`security-core.md`) |
 | escopo do produto, o que está fora do MVP | `docs/superpowers/PRD.md` |
-| spec, plano, ADR ou índice de specs | `.agents/rules/spec-workflow.md` · `docs/superpowers/PRD.md` · `docs/superpowers/ADR.md` |
+| spec, plano, ADR, índice de specs | `.agents/rules/spec-workflow.md` · `docs/superpowers/PRD.md` · `docs/superpowers/ADR.md` |
+| execução dos planos (testes, executor, QA, revisão), agentes de `.agents/agents/` e `.claude/agents/` | `.agents/rules/execution-workflow.md` · `.agents/rules/spec-workflow.md` |
 | commits, branches, PR | `.agents/rules/code-style.md` (núcleo) |
