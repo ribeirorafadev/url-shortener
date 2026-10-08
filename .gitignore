@@ -44,6 +44,9 @@ Thumbs.db
 .vscode/
 *.swp
 
+# Superpowers: ledger de execução dos planos e ferramentas locais do agente (ex.: gerador do Excalidraw)
+.superpowers/
+
 # Claude Code (configurações locais do agente)
 .claude/settings.local.json
 CLAUDE.local.md

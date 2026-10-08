@@ -1,6 +1,6 @@
 # short-url — Handoff
 
-**Atualizado em:** 2026-10-08 · **Versões anteriores:** `git log -- HANDOFF.md`. A última versão longa, com o detalhe de cada achado da releitura crítica, é `git show 5105255:HANDOFF.md`; a do histórico das sessões de design é `git show a944166:HANDOFF.md`.
+**Atualizado em:** 2026-10-08 (tarde) · **Versões anteriores:** `git log -- HANDOFF.md`. A última versão longa, com o detalhe de cada achado da releitura crítica, é `git show 5105255:HANDOFF.md`; a do histórico das sessões de design é `git show a944166:HANDOFF.md`.
 
 ## Goal
 
@@ -12,7 +12,8 @@ Encurtador de links com analytics: o primeiro projeto do portfólio full-stack d
 - **Design 100% fechado em 2026-10-07**, incluindo a releitura crítica (RC1 a RC10 e os baixos B-1 a B-4).
 - **Lacunas achadas ao preparar a spec, fechadas em 2026-10-07:** S1 (migration no `buildCommand` do `vercel.json`, client gerado no `postinstall`, `db:migrate` local/CI e, por consequência, `process.env` em vez do `env()` no `prisma.config.ts`), S2 (AD-004 por lint com lista branca), S3 (sufixos de host do Safe Browsing pela regra da v4, sem a Public Suffix List), S4 (cache em memória das respostas do Google, exigido pelo protocolo; o fail-closed continua como desvio consciente) e S5 (gráfico próprio no servidor, sem Recharts). Nenhuma passa no critério de ADR. A varredura de todos os arquivos foi feita e eles já refletem S1 a S5.
 - **Spec do MVP escrita em 2026-10-07 e APROVADA pelo Rafael em 2026-10-08** (`docs/superpowers/specs/2026-10-07-short-url-mvp-design.md`, status `Aprovada`, ~66 mil caracteres, 16 seções). Os trechos `[→ spec]` saíram de `.agents/` e viraram referências "spec, §N". Com a aprovação, os detalhes de "como" que a spec acrescentou também estão aprovados (lista em "Próximos passos", item 1).
-- **Próxima etapa: aguardar o Rafael.** Ele pediu explicitamente para **não começar a implementação** nem os planos até o próximo prompt. Há 4 tópicos abertos levantados por ele em 2026-10-08 (ver "Tópicos abertos"), e só depois vem o `superpowers:writing-plans`.
+- **Feito em 2026-10-08, depois da aprovação** (pedido do Rafael, sem implementação): `README.md` mínimo na raiz (validado por teste de aceite); `.agents/context/README.md` apagado (duplicava o índice do `AGENTS.md`); Excalidraw redesenhado do zero, com 7 seções, ícones e a seção RF/RNF (ver "Excalidraw"); `.superpowers/` passou a ser ignorado pelo Git (o HANDOFF já dizia que o *ledger* era ignorado, mas o `.gitignore` não tinha a regra).
+- **Próxima etapa: aguardar o Rafael.** Ele pediu explicitamente para **não começar a implementação** nem os planos até o próximo prompt. Resta 1 tópico aberto (agentes do harness, ver "Tópicos abertos"); depois vem o `superpowers:writing-plans`.
 
 ## Como retomar
 
@@ -25,7 +26,7 @@ Encurtador de links com analytics: o primeiro projeto do portfólio full-stack d
 
 ## Fontes da verdade
 
-- **Índice "ao mexer em X, leia Y":** `AGENTS.md` (também traz o glossário). Lista dos arquivos de contexto: `.agents/context/README.md`.
+- **Índice "ao mexer em X, leia Y":** `AGENTS.md` (também traz o glossário). Os 7 arquivos de `.agents/context/` estão listados nesse índice (o README da pasta foi apagado em 2026-10-08 por duplicá-lo).
 - **Núcleo** (~24 mil caracteres, sempre carregado): `AGENTS.md`, `.agents/rules/architecture-layers.md`, `.agents/rules/security-core.md`, `.agents/rules/code-style.md`.
 - **Sob demanda:** os demais `.agents/rules/*.md` e `.agents/context/*.md`, mais o PRD e o ADR (`docs/superpowers/ADR.md`, **append-only: nunca editar**).
 - **Rastro das decisões:** toda decisão foi registrada no arquivo-fonte com o rótulo e a data (ex.: `(RC4, decidido em 2026-10-07)`, `(B1, …)`, `(P5, …)`, `(T3, …)`). Para achar onde está uma decisão: `grep -rn "RC4" .agents docs`.
@@ -76,15 +77,15 @@ Todas debatidas com trade-offs e aprovadas pelo Rafael. **Não reabrir sem motiv
 - Valores de setup deixados em aberto de propósito: `<MAJOR>` do Postgres e `<SHA completo>` das ações do CI; região da função, do Neon e do Upstash (a mesma para os três, §9.11).
 - O status muda para `Em andamento` quando a implementação da fatia 1 começar (`specs/README.md`).
 
-**2. Quando o Rafael pedir (não antes):** resolver os "Tópicos abertos" → seção RF/RNF no Excalidraw → `superpowers:writing-plans` para os **três planos** (`docs/superpowers/plans/`, um por fatia, com **Branch de Trabalho** e os arquivos de contexto de cada tarefa) → revisão do Rafael → execução inline da fatia 1. Spec e planos vão direto na `main`.
+**2. Quando o Rafael pedir (não antes):** fechar o tópico aberto dos agentes → `superpowers:writing-plans` para os **três planos** (`docs/superpowers/plans/`, um por fatia, com **Branch de Trabalho** e os arquivos de contexto de cada tarefa) → revisão do Rafael → execução inline da fatia 1. Spec e planos vão direto na `main`.
 
 **3. Na fatia 1 (harness, etapa 2; não antecipar):** hooks quando existirem `lint`, `typecheck` e `test` (skill `update-config`; candidato: medir o limite de 12 mil caracteres); **decidir quem revisa cada fatia** (subagente no modelo mais capaz ou `agy -p`) e criar o agente revisor (`.claude/agents/` e `.agents/agents/`); skills só quando algo se repetir (`superpowers:writing-skills`); `paths:`/`glob` só para arquivo que o agente comprovadamente deixe de ler.
 
-**Tópicos abertos (levantados pelo Rafael em 2026-10-08; recomendações dadas, aguardando a resposta dele):**
-1. **READMEs de `.agents/`:** recomendação: **apagar o `.agents/context/README.md`** (duplica o índice do `AGENTS.md` e já exigiu atualização paralela; ao apagar, tirar a menção em "Fontes da verdade" abaixo) e **manter** os de `.agents/agents/` e `.agents/skills/` (o Git não versiona pasta vazia, e eles explicam como ligar o agente/skill nativamente nas duas ferramentas). Apagar exige o relatório + autorização.
-2. **Excalidraw:** recomendação: sim, agora (antes dos planos), em duas passadas: conteúdo (pendências da seção Excalidraw abaixo + S1 a S5 + RF/RNF) e depois visual. Ícones: o Rafael adiciona bibliotecas do libraries.excalidraw.com e solta cada ícone numa área de "paleta" com um texto-rótulo ao lado (ex.: `icon:vercel`); o agente clona por rótulo, já que identifica elemento por texto, nunca por posição. Uma seção por vez, com aprovação. Só com pedido explícito na mensagem (protocolo abaixo).
-3. **README da raiz agora:** recomendação: sim, **mínimo e honesto**: o que é, status "em design, implementação em 3 fatias", stack, links para PRD, ADR e spec, roadmap das fatias com checkbox. Sem "como rodar" (não há código). A versão completa continua sendo entrega da fatia 3 (PRD).
-4. **Agents e skills antes da implementação:** recomendação: **ainda não**, como já decidido ("harness, etapa 2", item 3 acima), mas **com data marcada**: o plano da fatia 1 ganha uma tarefa de harness depois que `lint`, `typecheck` e `test` existirem (hooks + agente revisor), e a decisão "quem revisa cada fatia" é apresentada ao Rafael ao escrever o plano 1. Skill só quando algo se repetir (a `superpowers:writing-skills` exige uma falha observada antes de escrever a skill).
+**Tópicos levantados pelo Rafael em 2026-10-08:**
+1. ✓ **READMEs de `.agents/`:** `context/README.md` apagado; os de `agents/` e `skills/` mantidos por enquanto (o Git não versiona pasta vazia, e eles explicam como ligar agente/skill nas duas ferramentas).
+2. ✓ **Excalidraw:** atualizado e redesenhado (seção "Excalidraw" abaixo).
+3. ✓ **README da raiz:** mínimo e honesto, sem "como rodar"; a versão completa continua sendo entrega da fatia 3.
+4. **Aberto — agentes do harness.** O Rafael perguntou se o "agente revisor" é para fazer e se seria o único, e o que acho de implementar já os agentes do harness. Resposta dada no relatório de 2026-10-08: o revisor é um subagente com instruções fixas (`.claude/agents/<nome>.md` + `.agents/agents/`) que lê o diff de uma fatia contra a spec e as regras e devolve os problemas antes do PR; **é para fazer, na fatia 1**, antes da primeira PR; recomendação de **só ele por enquanto** (outros agentes sem uma tarefa repetida que os justifique viram manutenção sem uso). Duas decisões ficam para quando o Rafael quiser: (a) criar o revisor agora, antes dos planos (dá: ele revisa contra a spec, que já existe) ou como tarefa do plano 1; (b) quem executa a revisão (subagente Claude no modelo mais capaz × `agy -p`). Apresentar uma por mensagem.
 
 **Pendências de setup** (anotadas, sem decisão aberta):
 - Instalar o Docker (hoje não há Docker nem Postgres) e escolher entre `sudo` e *rootless* (o grupo `docker` equivale a root).
@@ -102,10 +103,13 @@ Regras quebradas por assunto (commit `fbbfe7e`): núcleo sempre carregado + índ
 
 ## Excalidraw (documentação visual, no navegador do Rafael)
 
-- **Estado:** 5 seções (REGRAS DE NEGÓCIO, STACKS, SYSTEM DESIGN, MODELO DE DADOS, ENTREGA), 125 elementos, revisado em 2026-10-01. É o resumo visual; a verdade são os `.md`. Não exportado.
-- **Pendente, só na próxima edição pedida pelo Rafael:** ENTREGA (`feat/mvp-1-base` no lugar de `feat/mvp`; `migrate deploy` no `buildCommand` do `vercel.json` (S1), branch do Neon por preview, Standard Protection); STACKS (conferir Next 16.3.8); SYSTEM DESIGN (headers/CSP, origem canônica); seção RF/RNF depois da spec; melhorar a visualização (sem prazo); no fim, o Rafael exporta `.excalidraw` + SVG para `docs/`.
+- **Estado (2026-10-08):** cena **redesenhada do zero** com 665 elementos e 7 seções: 1 · Regras de negócio (4 cards), 2 · Stack (16 blocos), 3 · System design (camadas, portas, adaptadores, serviços externos e "por que assim"), 4 · Fluxos (criar e redirecionar), 5 · Modelo de dados (tabelas, índice, enum e notas), 6 · Entrega (CI/CD e as 3 fatias), 7 · Requisitos RF/RNF (spec §16). É o resumo visual; a verdade são os `.md`. Não exportado.
+- **A cena antiga (125 elementos) está no backup `excalidraw-backup-1791469337800`** do `localStorage` do excalidraw.com, além dos 7 backups anteriores.
+- **Gerador:** a cena sai de `.superpowers/excalidraw/build-scene.js` (local, ignorado pelo Git), com o teste `test-build.js` (`node test-build.js`: IDs únicos, índices em ordem, nada fora da largura). **Próxima edição: alterar o gerador e regravar a cena inteira, não remendar elementos.** Fluxo usado: teste no Node → colar a função na página → conferir o SHA-256 de `buildScene.toString()` contra o arquivo → ensaio em `window.__newScene` → checagens de sobreposição (texto × texto, texto vazando da caixa, caixas que se cruzam) → gravar → reabrir → print.
+- **Biblioteca de ícones do Rafael:** IndexedDB `excalidraw-library-db`, store `excalidraw-library-store`, chave `libraryData` (354 itens; o painel mostra na mesma ordem, 4 por linha). Índices usados: 17 cadeado, 18 firewall, 19 usuário, 22 servidor, 23 nuvem, 41 Docker, 44 Redis, 50 `</>`, 51 Postgres, 52 GitHub, 55 janela de navegador, 63 Relational DB, 70 Cache, 280 Shield. **Não há logos de Vercel, Next.js, Google nem Node:** foram usados ícones genéricos; se o Rafael adicionar esses logos, trocar no gerador.
+- **Pendente (só quando o Rafael pedir):** ele exporta `.excalidraw` + SVG para `docs/` (o SVG entra no README da fatia 3).
 - **Protocolo (via `localStorage` com claude-in-chrome), só quando o Rafael pedir na própria mensagem:** ele fecha as abas do excalidraw.com → o agente abre uma aba sem tocar no canvas e confere a contagem → backup em `excalidraw-backup-<ts>` → ensaio em memória (`window.__newScene`, com asserts) → grava `excalidraw` + `version-dataState`, conferindo que a cena não mudou → fecha a aba → avisa.
-- **Armadilhas:** identificar elementos por texto exato, nunca por posição; não imprimir IDs; aba em segundo plano não renderiza; a contagem cai quando o Excalidraw descarta `isDeleted`; a saída do `javascript_tool` é bloqueada com `=`, `?` ou `&` e cortada perto de 1.000 caracteres (ler em partes); o classificador nega neutralizar o `Storage.prototype.setItem` e nega gravar sem pedido explícito: **nunca tentar rota alternativa**.
+- **Armadilhas:** a página do excalidraw.com não consegue buscar arquivo de um servidor local (`fetch` para `127.0.0.1` falha sem chegar ao servidor): colar o código e conferir o hash; o tema do Rafael é escuro (as cores claras aparecem invertidas); identificar elementos por texto exato, nunca por posição; não imprimir IDs; aba em segundo plano não renderiza; a contagem cai quando o Excalidraw descarta `isDeleted`; a saída do `javascript_tool` é bloqueada com `=`, `?` ou `&` e cortada perto de 1.000 caracteres (ler em partes); o classificador nega neutralizar o `Storage.prototype.setItem` e nega gravar sem pedido explícito: **nunca tentar rota alternativa**.
 
 ## Como apresentar decisões (o que funcionou)
 
@@ -115,6 +119,7 @@ Regras quebradas por assunto (commit `fbbfe7e`): núcleo sempre carregado + índ
 - Tecnologia nova para ele (Docker, Neon, CI, PR, CSP): explicar a peça antes das opções e separar **produção** de **computador dele**.
 - **Verificar antes de afirmar:** context7 para bibliotecas; firecrawl para docs (Vercel, Neon, Google, MDN, RFCs); `npm view` para versões; `agy -p` para o Antigravity. **Ferramenta se mede** (`claude -p --output-format json` em diretório descartável). **Biblioteca se lê no código publicado** (`npm pack <pacote>@<versão>` no scratchpad + `grep`; assim fecharam o RC4 e o RC5). Número não oficial é sinalizado.
 - Assunto fora da pauta: relatório com varredura dos arquivos antes de decidir.
+- **Delegar com teste de aceite (2026-10-08):** escrever o teste antes (ele falha), delegar a um modelo menor (Sonnet/Haiku) em segundo plano, rodar o teste e revisar o resultado. Funcionou no README e na conferência de fatos do Excalidraw.
 - **Ao especificar o "como", reler a doc oficial da API** (referência do método, não só a visão geral): assim apareceram S3 e S4, e o efeito colateral do `env()` na S1. Lacuna achada vira decisão nova, uma por mensagem, antes de escrever.
 - Perguntas de "por que aceitar esse risco?" (ex.: `'unsafe-inline'` no RC6): responder com a análise concreta de impacto e, se couber, propor reforço barato na primeira barreira.
 
@@ -126,13 +131,14 @@ Regras quebradas por assunto (commit `fbbfe7e`): núcleo sempre carregado + índ
 - Afirmar texto de aviso sem checar os termos do provedor (o primeiro texto da R7 violava os termos do Google).
 - Afirmar comportamento de ferramenta sem medir (os links de `.claude/rules/` "não faziam nada": faziam).
 - Registrar decisão sem testar o ciclo inteiro (o `USE_LOCAL_FAKES` no `.env.local` quebraria o `test:http`).
+- Teste de aceite com palavra proibida sem limite de palavra: proibir `MIT` sem diferenciar maiúsculas barrou "limite", e o subagente trocou o vocabulário do glossário para passar. Proibir termo com `\b` e maiúsculas, e testar também o vocabulário obrigatório.
 - Fechar regra de integração lendo só a visão geral da API: a R7 dizia "sem cache local obrigatório", mas a referência do `hashes.search` exige cache (corrigido na S4).
 
 ## Repositório
 
 - Público: https://github.com/ribeirorafadev/url-shortener (`origin` via SSH, autenticado como `ribeirorafadev`). A `main` só tem documentação, commitada direto durante o design; com o setup (CI + ruleset), passa a aceitar só PR com ✓.
 - **Push só com autorização explícita do Rafael na mensagem.** Commits em Conventional Commits (descrição em pt-BR), com o trailer do Claude.
-- Tudo o que é commitado é público, inclusive este arquivo: nunca registrar segredos. `gh` e a CLI `vercel` não estão instalados. O README completo é entrega do PRD.
+- Tudo o que é commitado é público, inclusive este arquivo: nunca registrar segredos. `gh` e a CLI `vercel` não estão instalados. Há um `README.md` mínimo na raiz desde 2026-10-08 (status, escopo, stack, links e roadmap); o completo é entrega da fatia 3 (PRD).
 
 ## Preferências do Rafael
 
