@@ -1,6 +1,6 @@
 # short-url — Handoff
 
-**Atualizado em:** 2026-10-07 · **Versões anteriores:** `git log -- HANDOFF.md`. A última versão longa, com o detalhe de cada achado da releitura crítica, é `git show 5105255:HANDOFF.md`; a do histórico das sessões de design é `git show a944166:HANDOFF.md`.
+**Atualizado em:** 2026-10-08 · **Versões anteriores:** `git log -- HANDOFF.md`. A última versão longa, com o detalhe de cada achado da releitura crítica, é `git show 5105255:HANDOFF.md`; a do histórico das sessões de design é `git show a944166:HANDOFF.md`.
 
 ## Goal
 
@@ -8,19 +8,20 @@ Encurtador de links com analytics: o primeiro projeto do portfólio full-stack d
 
 ## Onde estamos
 
-- **Fase:** design pelo **caminho arquitetural** do `superpowers:brainstorming`. **Nenhum código escrito, de propósito.** Hard-gate: spec escrita e aprovada → três planos aprovados → só então código.
+- **Fase:** fim do design pelo **caminho arquitetural** do `superpowers:brainstorming`. **Nenhum código escrito, de propósito.** Hard-gate: spec aprovada ✓ → três planos aprovados → só então código.
 - **Design 100% fechado em 2026-10-07**, incluindo a releitura crítica (RC1 a RC10 e os baixos B-1 a B-4).
 - **Lacunas achadas ao preparar a spec, fechadas em 2026-10-07:** S1 (migration no `buildCommand` do `vercel.json`, client gerado no `postinstall`, `db:migrate` local/CI e, por consequência, `process.env` em vez do `env()` no `prisma.config.ts`), S2 (AD-004 por lint com lista branca), S3 (sufixos de host do Safe Browsing pela regra da v4, sem a Public Suffix List), S4 (cache em memória das respostas do Google, exigido pelo protocolo; o fail-closed continua como desvio consciente) e S5 (gráfico próprio no servidor, sem Recharts). Nenhuma passa no critério de ADR. A varredura de todos os arquivos foi feita e eles já refletem S1 a S5.
-- **Próxima etapa:** **escrever a spec do MVP** (ver "Próximos passos").
+- **Spec do MVP escrita em 2026-10-07 e APROVADA pelo Rafael em 2026-10-08** (`docs/superpowers/specs/2026-10-07-short-url-mvp-design.md`, status `Aprovada`, ~66 mil caracteres, 16 seções). Os trechos `[→ spec]` saíram de `.agents/` e viraram referências "spec, §N". Com a aprovação, os detalhes de "como" que a spec acrescentou também estão aprovados (lista em "Próximos passos", item 1).
+- **Próxima etapa: aguardar o Rafael.** Ele pediu explicitamente para **não começar a implementação** nem os planos até o próximo prompt. Há 4 tópicos abertos levantados por ele em 2026-10-08 (ver "Tópicos abertos"), e só depois vem o `superpowers:writing-plans`.
 
 ## Como retomar
 
 1. `git status -sb` deve mostrar `main...origin/main` limpo. Se não estiver, pergunte ao Rafael antes de mexer.
-2. Invoque `superpowers:brainstorming` (caminho arquitetural). A etapa atual é "escrever o design doc" (spec).
+2. O brainstorming terminou (spec aprovada). **Não invoque `superpowers:writing-plans` nem escreva código sem o Rafael pedir.** Quando ele pedir os planos: `superpowers:writing-plans`, três planos, um por fatia. Mudança na spec depois de aprovada: edite a spec (e a regra, se mudar o quê ou o porquê), rode a autorrevisão e peça nova aprovação.
 3. A sessão já carrega o **núcleo** (`AGENTS.md`, `architecture-layers`, `security-core`, `code-style`). **Antes de tratar um tema, leia os arquivos que o índice do `AGENTS.md` aponta.** Este HANDOFF é só um índice de estado, pendências e forma de trabalhar.
 4. Decisões novas: **uma por mensagem**, no formato de "Como apresentar decisões". Ao fechar, registre **na hora** no arquivo-fonte e marque aqui.
 5. Ao fim de cada bloco: **varredura de todos os arquivos afetados → atualização → HANDOFF → commit e push**, com autorização do Rafael na mensagem (um Ctrl+Z já apagou trabalho não commitado).
-6. Regras do harness: cada arquivo de `.agents/` com **no máximo 12 mil caracteres** (`wc -m`); regra nova sob demanda leva `trigger: model_decision` + `description`, entra no índice do `AGENTS.md` e **não** ganha link em `.claude/rules/` (só o núcleo tem link); detalhe de implementação novo vai marcado **[→ spec]** (`spec-workflow.md`, §8).
+6. Regras do harness: cada arquivo de `.agents/` com **no máximo 12 mil caracteres** (`wc -m`); regra nova sob demanda leva `trigger: model_decision` + `description`, entra no índice do `AGENTS.md` e **não** ganha link em `.claude/rules/` (só o núcleo tem link); detalhe de implementação novo vai **direto para a spec**, e a regra cita "spec, §N" (`spec-workflow.md`, §8).
 
 ## Fontes da verdade
 
@@ -68,18 +69,22 @@ Todas debatidas com trade-offs e aprovadas pelo Rafael. **Não reabrir sem motiv
 
 ## Próximos passos
 
-**1. Escrever a spec** (`docs/superpowers/specs/2026-10-07-short-url-mvp-design.md`, formato de `spec-workflow.md` §7):
-- Cabeçalho com **Branch Alvo** = as três branches. Seções numeradas, `## Alternativas consideradas e por que foram descartadas` e `## Requisitos rastreados` (RF/RNF, coluna de task apontando para o plano da fatia).
-- Consolidar PRD + `.agents/context/` + `.agents/rules/`, inclusive S1 a S5. Registrar na spec os **desvios conscientes do Safe Browsing** (sufixos da v4, S3; fail-closed, B1). **Mover os trechos [→ spec]** para a spec e deixar no lugar uma referência à seção; triar também detalhes curtos sem rótulo (§8). Isso alivia o `redirect.md` (11,4 mil) e o `url-validation.md` (11 mil), perto do limite.
-- **Plano de testes:** domínio com fakes (`LinkRepository`, `UrlThreatChecker`, rate limiter, `Clock` fixo); testes de tabela das funções puras (`isValidSlugFormat`, `isPreviewBot` com UAs de navegadores embutidos, dispositivo, referrer, IP `/64`, formato do token, motivo do 410, `trim()`, fim do dia em `America/Sao_Paulo`, canonicalização do Safe Browsing com os exemplos das docs, sufixos de host da v4 (S3), cache com relógio injetado (S4), `resolveAppOrigin`, validação em duas rodadas, IPv6 numérico, adaptador "indisponível"); concorrência do limite com Postgres real; testes HTTP (302/404/410, `no-store`, `HEAD`, headers da gestão e globais).
-- **Notas sobre o AD-004** (não editável): o QR saiu do domínio para a entrada, e os adaptadores ganharam `src/infra/`. Nenhuma das duas passa no critério de ADR.
-- **Setup a especificar:** `.npmrc` + `allowScripts`; lint (`import/no-extraneous-dependencies`, `react/no-danger`, barreira ao SQL cru inseguro, `no-restricted-imports` com lista branca no domínio, **S2 fechada em 2026-10-07**); `engines.node`; build da Vercel no `vercel.json` (`buildCommand` com `prisma migrate deploy && next build`), `postinstall: prisma generate` e `db:migrate` (**S1 fechada em 2026-10-07**, `architecture-persistence.md`); `.env.example` (`USE_LOCAL_FAKES`, `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `APP_ORIGIN`, chaves em branco); `prisma.config.ts` com `loadEnvConfig` e `process.env` (nunca o `env()`, S1); `next.config.ts` como função de `phase` (trava do `USE_LOCAL_FAKES`, trava das chaves na Vercel, headers globais com a regra da gestão por último); `compose.yml`; `vitest.config.mts`; scripts `test`, `test:http` (com `APP_ORIGIN`), `lint`, `typecheck`; workflow do CI (ações por SHA, `contents: read`, Postgres como *service container*); instalar sempre com versão explícita.
-- Nota: o Prisma 8 renomeia `updateManyAndReturn` para `updateAll()` (o projeto fixa o 7).
-- Linha no `docs/superpowers/specs/README.md` → autorrevisão → **revisão do Rafael**.
+**1. Spec aprovada em 2026-10-08** (`docs/superpowers/specs/2026-10-07-short-url-mvp-design.md`):
+- Estrutura: §1–3 contexto; §4 arquitetura (árvore de arquivos, ponto de montagem, logs); §5 domínio; §6 dados; §7 Safe Browsing; §8 entrada; §9 configuração; §10 erros; §11 testes; §12 fatias; §13 limitações; §14 notas sobre o AD-004; §15 alternativas; §16 requisitos (RF01–RF14, RNF01–RNF12).
+- **Detalhes de "como" acrescentados pela spec e aprovados com ela** (não reabrir sem motivo novo): referrers em top 10 + "outros" (§5.9); R4 também recusa `.local`, `.home.arpa`, `.internal` e todas as faixas IPv4 de uso especial da RFC 6890 (§5.5); entrada `site.com:8080/x` cai na R1 (§5.5); dois bancos no container, `shorturl` e `shorturl_test` (§9.7); textos das páginas 404, 429 e da prévia de bot (§8.6); `poweredByHeader: false` (§9.4); gestão com banco fora responde 200 (§8.5, §13); detalhes `CANARY`/`FRAME_ONLY` ignorados no Safe Browsing (§7.1); `RedirectService` novo no domínio (§5.8, §14); `UrlThreatChecker` devolve `'unavailable'` em vez de lançar (§5.2); testes nunca leem `.env*` e recusam rodar fora de `127.0.0.1`/`localhost` (§9.8).
+- Itens **(conferir na tarefa)**, que os planos precisam transformar em passo de verificação: `select` no `updateManyAndReturn` e um único `UPDATE … RETURNING` (senão `$queryRaw`); erros de conectividade do Prisma/`pg` (§6.5); API do `@upstash/ratelimit` (ler o código publicado); padrões dos UAs de bots; padrões da lista branca do ESLint; `revalidatePath` na desativação; `404` real da gestão sem `loading.tsx`; tipo do `defineConfig` com URL ausente.
+- Valores de setup deixados em aberto de propósito: `<MAJOR>` do Postgres e `<SHA completo>` das ações do CI; região da função, do Neon e do Upstash (a mesma para os três, §9.11).
+- O status muda para `Em andamento` quando a implementação da fatia 1 começar (`specs/README.md`).
 
-**2. Depois da spec aprovada:** seção RF/RNF no Excalidraw → `superpowers:writing-plans` para os **três planos** (`docs/superpowers/plans/`, um por fatia, com **Branch de Trabalho** e os arquivos de contexto de cada tarefa) → revisão do Rafael → execução inline da fatia 1. Spec e planos vão direto na `main`.
+**2. Quando o Rafael pedir (não antes):** resolver os "Tópicos abertos" → seção RF/RNF no Excalidraw → `superpowers:writing-plans` para os **três planos** (`docs/superpowers/plans/`, um por fatia, com **Branch de Trabalho** e os arquivos de contexto de cada tarefa) → revisão do Rafael → execução inline da fatia 1. Spec e planos vão direto na `main`.
 
 **3. Na fatia 1 (harness, etapa 2; não antecipar):** hooks quando existirem `lint`, `typecheck` e `test` (skill `update-config`; candidato: medir o limite de 12 mil caracteres); **decidir quem revisa cada fatia** (subagente no modelo mais capaz ou `agy -p`) e criar o agente revisor (`.claude/agents/` e `.agents/agents/`); skills só quando algo se repetir (`superpowers:writing-skills`); `paths:`/`glob` só para arquivo que o agente comprovadamente deixe de ler.
+
+**Tópicos abertos (levantados pelo Rafael em 2026-10-08; recomendações dadas, aguardando a resposta dele):**
+1. **READMEs de `.agents/`:** recomendação: **apagar o `.agents/context/README.md`** (duplica o índice do `AGENTS.md` e já exigiu atualização paralela; ao apagar, tirar a menção em "Fontes da verdade" abaixo) e **manter** os de `.agents/agents/` e `.agents/skills/` (o Git não versiona pasta vazia, e eles explicam como ligar o agente/skill nativamente nas duas ferramentas). Apagar exige o relatório + autorização.
+2. **Excalidraw:** recomendação: sim, agora (antes dos planos), em duas passadas: conteúdo (pendências da seção Excalidraw abaixo + S1 a S5 + RF/RNF) e depois visual. Ícones: o Rafael adiciona bibliotecas do libraries.excalidraw.com e solta cada ícone numa área de "paleta" com um texto-rótulo ao lado (ex.: `icon:vercel`); o agente clona por rótulo, já que identifica elemento por texto, nunca por posição. Uma seção por vez, com aprovação. Só com pedido explícito na mensagem (protocolo abaixo).
+3. **README da raiz agora:** recomendação: sim, **mínimo e honesto**: o que é, status "em design, implementação em 3 fatias", stack, links para PRD, ADR e spec, roadmap das fatias com checkbox. Sem "como rodar" (não há código). A versão completa continua sendo entrega da fatia 3 (PRD).
+4. **Agents e skills antes da implementação:** recomendação: **ainda não**, como já decidido ("harness, etapa 2", item 3 acima), mas **com data marcada**: o plano da fatia 1 ganha uma tarefa de harness depois que `lint`, `typecheck` e `test` existirem (hooks + agente revisor), e a decisão "quem revisa cada fatia" é apresentada ao Rafael ao escrever o plano 1. Skill só quando algo se repetir (a `superpowers:writing-skills` exige uma falha observada antes de escrever a skill).
 
 **Pendências de setup** (anotadas, sem decisão aberta):
 - Instalar o Docker (hoje não há Docker nem Postgres) e escolher entre `sudo` e *rootless* (o grupo `docker` equivale a root).

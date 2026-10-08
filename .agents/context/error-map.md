@@ -1,6 +1,6 @@
 # Mapa de erros (aprovado em 2026-09-30)
 
-Parte do contexto de domínio, lido sob demanda pelo índice do `AGENTS.md`. Trechos marcados **[→ spec]** são detalhe de implementação e vão para a spec do MVP quando ela for escrita.
+Parte do contexto de domínio, lido sob demanda pelo índice do `AGENTS.md`. O como (SQL, tipos, regex, nomes de método) fica na spec do MVP, `docs/superpowers/specs/2026-10-07-short-url-mvp-design.md`, citada aqui como "spec, §N".
 
 Princípio: mensagem clara para o usuário, **nenhum detalhe interno** (stack trace, nome de tabela, "Prisma"). Erro inesperado vira mensagem genérica mais log, sem token nem URL de destino.
 

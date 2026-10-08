@@ -1,10 +1,10 @@
 # Redirect
 
-Parte do contexto de domínio, lido sob demanda pelo índice do `AGENTS.md`. Trechos marcados **[→ spec]** são detalhe de implementação e vão para a spec do MVP quando ela for escrita.
+Parte do contexto de domínio, lido sob demanda pelo índice do `AGENTS.md`. O como (SQL, tipos, regex, nomes de método) fica na spec do MVP, `docs/superpowers/specs/2026-10-07-short-url-mvp-design.md`, citada aqui como "spec, §N".
 
 ## Regras
 
-- **Pré-validação do formato do slug (decidida em 2026-09-29):** a primeira coisa que o `GET`/`HEAD /[slug]` faz é chamar `isValidSlugFormat(slug)`, uma função pura do domínio que testa `^[A-Za-z0-9]{7}$` **[→ spec]**. É a mesma regra de alfabeto e tamanho do `SlugGenerator`, definida num lugar só. Fora do formato → `404` imediato, **antes do rate limit e do banco**. Pedido malformado (`/wp-login.php`, `/.env`, `/admin`) nunca vira link, então não gasta a cota do Upstash nem uma consulta. Descartados: rate limit antes do formato (gasta a cota com lixo) e sem checagem (gasta a cota e uma consulta ao banco).
+- **Pré-validação do formato do slug (decidida em 2026-09-29):** a primeira coisa que o `GET`/`HEAD /[slug]` faz é chamar `isValidSlugFormat(slug)`, uma função pura do domínio (regex na spec, §5.3). É a mesma regra de alfabeto e tamanho do `SlugGenerator`, definida num lugar só. Fora do formato → `404` imediato, **antes do rate limit e do banco**. Pedido malformado (`/wp-login.php`, `/.env`, `/admin`) nunca vira link, então não gasta a cota do Upstash nem uma consulta. Descartados: rate limit antes do formato (gasta a cota com lixo) e sem checagem (gasta a cota e uma consulta ao banco).
   - **Rota fixa na raiz (B-4, aprovado em 2026-10-07):** nenhuma rota fixa na raiz tem exatamente 7 caracteres `[A-Za-z0-9]`, porque esconderia o slug igual (ex.: uma página de privacidade seria `/privacidade`, não `/privacy`). Hoje só existe `/manage`, com 6.
 - **Respostas do redirect**:
   - `302 Found` + `Cache-Control: no-store` quando o link está ativo;
@@ -20,23 +20,11 @@ Parte do contexto de domínio, lido sob demanda pelo índice do `AGENTS.md`. Tre
     - Descartados: texto puro (parece app quebrado para quem avalia o portfólio) e redirect para uma página React (`302 → 200`), que deixaria de responder `410`/`404` de verdade e violaria o critério de "pronto" do PRD.
 - **Parâmetros no link curto são ignorados (P2, decidido em 2026-09-30):** em `/aB3xZ9k?utm_source=instagram`, o que vem depois do `?` é descartado, e o `Location` é sempre o `destination_url` gravado, sem nada anexado. Motivo: o destino é imutável (PRD), e repassar parâmetros deixaria **qualquer pessoa**, sem o token, alterar o destino. Ex.: `?next=https://evil.com` explorando um *open redirect* do site de destino com a credibilidade do link legítimo. Também poderia estourar os 2048 caracteres da R5. Para marketing, o caminho é **um link por canal**, com as UTMs já no destino: cada canal ganha estatísticas próprias no dashboard. Descartados: repassar tudo e repassar só `utm_*` (sujaria o analytics do dono e exigiria mesclar parâmetros e revalidar o tamanho).
 - **Por que 302 e não 301**: o 301 é cacheado pelo navegador. A partir do segundo clique, o navegador vai direto ao destino sem passar pelo servidor, e o sistema perde o analytics e o controle de expiração e desativação.
-- **Incremento atômico**: a checagem de desativação, de limite e de expiração e o incremento do contador acontecem numa única operação no banco. Com a checagem separada do incremento, dois cliques simultâneos com o contador em 99 (limite 100) passariam os dois. **[→ spec]** A forma de referência é esta (a implementação exata via Prisma fica para a spec):
-
-  ```sql
-  UPDATE links
-  SET click_count = click_count + 1
-  WHERE slug = $1
-    AND deactivated_at IS NULL
-    AND (max_clicks IS NULL OR click_count < max_clicks)
-    AND (expires_at IS NULL OR expires_at > now())
-  RETURNING id, destination_url;
-  ```
-
-  Corrigido em 2026-09-30: a versão anterior **não checava `deactivated_at`**, então um link desativado continuaria redirecionando. Ela também usava o nome de coluna `original_url`, diferente do schema (`destination_url`), e não devolvia o `id`, que o `after()` precisa para gravar o evento.
+- **Incremento atômico**: a checagem de desativação, de limite e de expiração e o incremento do contador acontecem numa única operação no banco. Com a checagem separada do incremento, dois cliques simultâneos com o contador em 99 (limite 100) passariam os dois. O SQL de referência e a implementação com o Prisma estão na spec, §6.3. Corrigido em 2026-09-30: a versão anterior **não checava `deactivated_at`**, então um link desativado continuaria redirecionando.
 
   Se zero linhas forem afetadas, o link não existe ou está inativo. É preciso distinguir os dois casos para responder 404 ou 410.
 - **Registro detalhado do clique** (dispositivo, referrer): fica fora do caminho crítico do redirect, gravado depois que a resposta sai (decidido em 2026-09-29). O mecanismo é o **`after()` de `next/server`**, que funciona em Route Handler e, na Vercel, usa o `waitUntil` da plataforma para manter a função viva até o fim do callback. Esse prazo é o `maxDuration` da rota: 300 s no Hobby com Fluid compute. Um "fire and forget" comum poderia ser interrompido quando a função termina.
-  - **Os headers são lidos e classificados antes do `after()`** (`ClickTracker`, função pura). O callback recebe só valores prontos (`linkId`, `deviceType`, `referrerHost`) e apenas grava.
+  - **Os headers são lidos e classificados antes do `after()`** (`classifyDevice` e `extractReferrerHost`, funções puras do domínio; spec §5.6). O callback recebe só valores prontos (`linkId`, `deviceType`, `referrerHost`) e apenas grava.
   - **Se a gravação falhar**, o visitante não percebe, porque o 302 já saiu. O Next registra o erro com `console.error`, sem retry. O nosso log leva o slug, **nunca a URL de destino**, que pode conter dado privado. O resultado é a divergência aceita em `data-model.md` (`click_count` duplicado).
   - Descartados: gravar antes de responder, porque uma falha na tabela de eventos viraria erro para o visitante e o analytics derrubaria o link; e UPDATE + INSERT numa única query (CTE), que exige SQL escrito à mão e tem o mesmo problema. Evolução: fila com retry (ex.: QStash), se a perda de eventos passar a importar.
 
@@ -58,15 +46,15 @@ Quando um link curto é colado no WhatsApp, Slack, Telegram, X, Facebook, Linked
 
 ## Fluxo
 
-**Redirecionar** (caminho mais quente, com leituras ~100× mais frequentes que escritas). Route Handler `src/app/[slug]/route.ts`, que exporta `GET` e `HEAD`. A ordem dos passos é regra; os nomes de método no esboço (`findUnique`, `updateManyAndReturn`) são **[→ spec]**:
+**Redirecionar** (caminho mais quente, com leituras ~100× mais frequentes que escritas). Route Handler `src/app/[slug]/route.ts`, que exporta `GET` e `HEAD`. A ordem dos passos é regra; a implementação está na spec, §8.4:
    ```
    1. isValidSlugFormat(slug) falhou → 404 (sem Upstash nem banco)
    2. rate limit por IP (/64 no IPv6) → 429 se exceder; Upstash fora ou lento (>1 s), configuração ausente (RC4) ou IP ausente (RC5) → segue (fail-open)
    3. HEAD ou isPreviewBot(UA)?
-      ├─ sim → só lê (findUnique): 404 | 410 com motivo | com limite → 200 página neutra | sem limite → 302 sem incrementar
-      └─ não → updateManyAndReturn (atômico)
+      ├─ sim → só lê o link: 404 | 410 com motivo | com limite → 200 página neutra | sem limite → 302 sem incrementar
+      └─ não → UPDATE atômico
                ├─ 1 linha → 302 + Cache-Control: no-store
-               └─ vazio  → findUnique: 404 ou 410 com motivo
+               └─ vazio  → lê o link: 404 ou 410 com motivo
    4. after(): grava o evento de clique só com o link ativo (BOT para bot de preview; nada para HEAD, 404 ou 410)
    banco sem resposta em 5 s ou com falha, em qualquer passo → 503
    ```

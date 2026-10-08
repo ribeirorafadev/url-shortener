@@ -79,6 +79,6 @@ Tasks usam `### Task N: <Nome>`, sempre com blocos `**Files:**` e `**Interfaces:
 * **Regras** (`.agents/rules/`) e **contexto** (`.agents/context/`) guardam **o quê e por quê**: comportamento, restrições, decisões com motivo e alternativas descartadas (inclusive a escolha de biblioteca e de configuração).
 * A **spec** guarda **o como**: SQL, tipos TypeScript, regex, nomes de método e de arquivo, pseudocódigo.
 * Critério para cada trecho: **"se isto mudar durante a implementação, a regra de negócio muda?"** Sim → fica na regra. Não → vai para a spec. Ex.: "slug de 7 caracteres base62, aleatório" fica na regra; a regex `^[A-Za-z0-9]{7}$` vai para a spec.
-* Ao escrever a spec do MVP, **mover para ela os trechos marcados `[→ spec]`** em `.agents/context/` e deixar no lugar uma referência à seção da spec. Detalhes curtos em linha sem rótulo (um nome de método, uma regex) também são triados nessa hora.
+* Os trechos marcados `[→ spec]` foram movidos para a spec do MVP em 2026-10-07, com uma referência à seção no lugar ("spec, §N"). Daqui em diante, detalhe de implementação novo vai direto para a spec; nome curto que serve de vocabulário (ex.: `isValidSlugFormat`) pode ficar na regra.
 * Motivo: cada detalhe existe num lugar só. Um SQL repetido na regra e na spec já divergiu uma vez (o UPDATE atômico sem `deactivated_at`, corrigido em 2026-09-30).
 

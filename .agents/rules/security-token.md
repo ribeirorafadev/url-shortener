@@ -5,7 +5,7 @@ description: "Token de gestão: hash SHA-256 no banco, formato base64url e os ca
 # Segurança — token de gestão
 
 ## Armazenamento e formato (decidido na sessão de design)
-- **Token de gestão guardado só como hash SHA-256** (coluna `BYTEA` de 32 bytes com `UNIQUE`). O token tem 32 bytes de CSPRNG (256 bits), então um hash rápido basta: inverter o hash é inviável, e a busca continua indexada. Hash lento (argon2/bcrypt) foi descartado porque protege segredos de baixa entropia, não é indexável (obrigaria o padrão seletor+verificador) e custa de 100 a 250 ms de CPU por acesso sem ganho real. Plaintext foi descartado porque um dump do banco daria controle de todos os links. Hash via Web Crypto (`crypto.subtle.digest`), sem dependência nova. Detalhamento e alternativas vão para a spec.
+- **Token de gestão guardado só como hash SHA-256** (coluna `BYTEA` de 32 bytes com `UNIQUE`). O token tem 32 bytes de CSPRNG (256 bits), então um hash rápido basta: inverter o hash é inviável, e a busca continua indexada. Hash lento (argon2/bcrypt) foi descartado porque protege segredos de baixa entropia, não é indexável (obrigaria o padrão seletor+verificador) e custa de 100 a 250 ms de CPU por acesso sem ganho real. Plaintext foi descartado porque um dump do banco daria controle de todos os links. Hash via Web Crypto (`crypto.subtle.digest`), sem dependência nova. Implementação na spec do MVP, §5.3 (formato e hash) e §6.1 (coluna).
 - **Formato e exibição do token:** base64url sem padding (43 caracteres), exibido uma única vez no card de resultado da criação. Nunca vai para `localStorage`, cookie, log ou redirect (ver `.agents/context/link-creation.md`, "Token de gestão").
 
 ## Vazamentos do token que o hash não cobre (decidido em 2026-09-29)

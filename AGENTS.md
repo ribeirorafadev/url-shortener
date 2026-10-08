@@ -17,7 +17,7 @@ Este arquivo é lido nativamente pelo Antigravity e importado pelo `CLAUDE.md` n
 
 - **Núcleo, sempre carregado:** este `AGENTS.md`, `.agents/rules/architecture-layers.md`, `.agents/rules/security-core.md` e `.agents/rules/code-style.md` (`trigger: always_on` no Antigravity; links em `.claude/rules/` no Claude Code).
 - **Sob demanda:** os demais arquivos de `.agents/rules/` (`trigger: model_decision`), os de `.agents/context/`, o PRD e o ADR. **Antes de mexer em algo, leia os arquivos indicados no índice abaixo.**
-- Trechos marcados **[→ spec]** são detalhe de implementação (SQL, tipos, pseudocódigo, nomes de método): valem como rascunho e serão movidos para a spec do MVP.
+- **Regra × spec:** as regras e o contexto guardam o quê e por quê; o como (SQL, tipos, pseudocódigo, nomes de método e de arquivo, configuração) está na spec do MVP, `docs/superpowers/specs/2026-10-07-short-url-mvp-design.md`. Detalhe novo de implementação vai direto para a spec (`spec-workflow.md` §8).
 - Cada arquivo tem no máximo 12 mil caracteres. Arquivo novo em `.agents/rules/` só ganha link em `.claude/rules/` se fizer parte do núcleo; arquivo novo sob demanda entra no índice.
 
 ## Índice: o que ler antes de mexer em cada coisa

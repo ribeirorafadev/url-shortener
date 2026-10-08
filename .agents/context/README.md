@@ -1,6 +1,6 @@
 Contexto de domínio do projeto (regras de negócio, fluxos, schema de dados, mapa de erros). Um arquivo por assunto, cada um com no máximo 12 mil caracteres. O glossário fica no `AGENTS.md`.
 
-Estes arquivos **não são carregados automaticamente**: o índice do `AGENTS.md` diz quando ler cada um. Trechos marcados **[→ spec]** são detalhe de implementação e vão para a spec do MVP quando ela for escrita (decisão de 2026-10-03).
+Estes arquivos **não são carregados automaticamente**: o índice do `AGENTS.md` diz quando ler cada um. O como (SQL, tipos, regex, nomes de método) fica na spec do MVP, `docs/superpowers/specs/2026-10-07-short-url-mvp-design.md` (movido em 2026-10-07).
 
 | Arquivo | Assunto |
 |---|---|

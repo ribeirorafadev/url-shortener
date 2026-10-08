@@ -1,20 +1,13 @@
 # Criação do link
 
-Parte do contexto de domínio, lido sob demanda pelo índice do `AGENTS.md`. Trechos marcados **[→ spec]** são detalhe de implementação e vão para a spec do MVP quando ela for escrita.
+Parte do contexto de domínio, lido sob demanda pelo índice do `AGENTS.md`. O como (SQL, tipos, regex, nomes de método) fica na spec do MVP, `docs/superpowers/specs/2026-10-07-short-url-mvp-design.md`, citada aqui como "spec, §N".
 
 ## Regras
 
 - **Token de gestão**: exibido só na resposta de criação. Se o usuário perder o link de gestão, não há recuperação (não existe conta).
   - **Formato:** 32 bytes de `crypto.getRandomValues` em **base64url sem padding** (RFC 4648, §5), com 43 caracteres seguros para URL.
   - **Exibição única (decidida em 2026-09-28):** a Server Action devolve o resultado como estado (`useActionState`), e um **card na própria tela de criação** mostra o link curto, o link de gestão, o QR, os botões "copiar" e "baixar" e o aviso "guarde este link: não há recuperação". Um F5 descarta o estado, o que é o comportamento certo para um segredo exibido uma vez. Nada do token vai para `localStorage`, cookie ou log. Descartado: redirecionar para `/manage/[token]` logo após criar, porque isso gravaria o token no histórico do navegador na hora (ver `.agents/rules/security-token.md`, "Vazamentos do token").
-- **Contrato da `createLink`:** Server Action não tem status HTTP de erro (é sempre `POST 200`). **[→ spec]** O resultado é um tipo discriminado:
-
-  ```ts
-  type CreateLinkState =
-    | { status: 'idle' }
-    | { status: 'success'; shortUrl: string; manageUrl: string; qrCodeDataUrl: string | null; isInsecureDestination: boolean }
-    | { status: 'error'; fieldErrors?: Partial<Record<'url' | 'maxClicks' | 'expiration', string>>; message?: string; threatAdvisory?: true }
-  ```
+- **Contrato da `createLink`:** Server Action não tem status HTTP de erro (é sempre `POST 200`). O resultado é um tipo discriminado (`CreateLinkState`: `idle`, `success` ou `error`), definido na spec, §8.3.
 
   `shortUrl` e `manageUrl` são absolutos (`https://<domínio>/...`), montados com a origem canônica (RC2; ver `url-validation.md`, R3). `isInsecureDestination` alimenta o aviso de destino `http:` (R1). O mapeamento completo de erros está em `error-map.md`.
   - **Perda do token depois de criado (P5, decidido em 2026-09-30).** Há dois caminhos:

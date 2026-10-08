@@ -5,7 +5,7 @@ trigger: always_on
 
 ## Camadas e organização de pastas
 
-São três camadas no servidor (entrada, domínio e adaptadores), e as dependências sempre apontam para dentro (AD-004). A camada de adaptadores fica em **duas pastas**, `src/data/` (banco) e `src/infra/` (serviços externos), decididas na B2 em 2026-09-30. A estrutura abaixo é uma proposta, a confirmar na spec:
+São três camadas no servidor (entrada, domínio e adaptadores), e as dependências sempre apontam para dentro (AD-004). A camada de adaptadores fica em **duas pastas**, `src/data/` (banco) e `src/infra/` (serviços externos), decididas na B2 em 2026-09-30. A estrutura abaixo foi confirmada na spec do MVP, que traz a árvore completa de arquivos (§4.1):
 
 ```
 src/
@@ -21,7 +21,7 @@ src/
 Direção das dependências: `app` → `domain` ← `data` e `infra`. O domínio não importa nenhuma das outras pastas; `data` e `infra` implementam as interfaces dele, e a entrada monta tudo, injetando os adaptadores pelo construtor.
 
 - `src/app/` — **entrada**: Pages, Route Handlers (ex.: `[slug]/route.ts` para o redirect) e Server Actions. É a única camada que importa `next/*`. O guarda de rate limit fica aqui, antes de qualquer chamada ao domínio. O redirect exporta `GET` e `HEAD`, com um `HEAD` próprio para o Next não executar o `GET` e consumir o link, e grava o evento de clique com `after()` de `next/server`. Os templates HTML do `404`, do `410` e da página neutra dos bots ficam num módulo auxiliar (ex.: `src/app/_lib/`). Ver `.agents/context/redirect.md`, "Fluxo". A geração do QR code também fica aqui: o QR é uma apresentação do link curto que o domínio devolve, não regra de negócio, e a lib `qrcode` é dependência de terceiros que o domínio não pode importar. Fica num módulo auxiliar fora das rotas (ex.: pasta privada `src/app/_lib/`, que o App Router exclui do roteamento). O QR é gerado sob demanda a partir da URL curta e não é persistido. Duas telas usam a mesma função: o card de criação e a página de gestão (P1b). O formato é PNG em data URL com 512 px (ver `.agents/context/link-creation.md`, "QR code").
-- `src/domain/` — **domínio**: regras de negócio em TypeScript puro (`LinkService`, `SlugGenerator`, `UrlValidator`, `ClickTracker`) e as interfaces que o domínio exige, como `LinkRepository`, `UrlThreatChecker` (R7) e `Clock` (B-1, relógio injetado para os testes).
+- `src/domain/` — **domínio**: regras de negócio em TypeScript puro (`LinkService`, `RedirectService`, `UrlValidator` e funções puras como `generateSlug`, `isPreviewBot` e `classifyDevice`; lista completa na spec, §5) e as interfaces que o domínio exige, como `LinkRepository`, `UrlThreatChecker` (R7) e `Clock` (B-1, relógio injetado para os testes).
 - `src/data/` — **dados**: implementações das interfaces do domínio com Prisma (ex.: `PrismaLinkRepository`) e o client Prisma singleton. É o único lugar que importa Prisma.
   - O client gerado pelo Prisma 7 fica em `src/data/generated/prisma/` (`output` do generator `prisma-client`) e é importado de lá, não de `@prisma/client`. Assim, o próprio caminho do import denuncia uma violação do AD-004, e o lint a barra (S2, `code-style.md`).
   - A pasta gerada não é versionada (`.gitignore`), e o `postinstall` roda `prisma generate` (S1, `architecture-persistence.md`). Sem isso, o deploy falha com `Cannot find module`.

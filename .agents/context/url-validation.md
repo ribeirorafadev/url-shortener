@@ -1,6 +1,6 @@
 # Validação da URL de destino
 
-Parte do contexto de domínio, lido sob demanda pelo índice do `AGENTS.md`. Trechos marcados **[→ spec]** são detalhe de implementação e vão para a spec do MVP quando ela for escrita.
+Parte do contexto de domínio, lido sob demanda pelo índice do `AGENTS.md`. O como (SQL, tipos, regex, nomes de método) fica na spec do MVP, `docs/superpowers/specs/2026-10-07-short-url-mvp-design.md`, citada aqui como "spec, §N".
 
 - **Validação da URL de destino** (decidida em 2026-09-28). Fica numa função pura do domínio (`UrlValidator`). A análise usa o `new URL()` nativo (WHATWG), e as regras valem **sobre o resultado da análise, não sobre o texto**. A borda só barra entrada vazia ou maior que o limite antes de chamar o domínio.
   - **`trim()` em todos os campos de texto do formulário (P4, decidido em 2026-09-30),** na camada de entrada, antes de qualquer checagem (inclusive a do vazio e a R6). O `String.prototype.trim` nativo (ECMAScript) remove espaço, tab, quebra de linha e espaço não separável (U+00A0) **só nas pontas**. Sem isso, `" exemplo.com"` viraria `"https:// exemplo.com"` na R6 e daria "URL inválida" sem motivo visível. Também vale para o limite de cliques: `"10 "` passa a ser aceito como `10`. Espaço **no meio** da URL não é removido, porque pode ser proposital (o parser o converte para `%20`). Descartados: não tratar (erro confuso após colar do WhatsApp/Word) e remover espaços internos (mudaria o destino sem avisar).

@@ -1,6 +1,6 @@
-# Modelo de dados (fechado; consolidar na spec)
+# Modelo de dados (fechado; schema na spec, §6.1)
 
-Parte do contexto de domínio, lido sob demanda pelo índice do `AGENTS.md`. Trechos marcados **[→ spec]** são detalhe de implementação e vão para a spec do MVP quando ela for escrita.
+Parte do contexto de domínio, lido sob demanda pelo índice do `AGENTS.md`. O como (SQL, tipos, regex, nomes de método) fica na spec do MVP, `docs/superpowers/specs/2026-10-07-short-url-mvp-design.md`, citada aqui como "spec, §N".
 
 Decidido:
 
@@ -15,8 +15,8 @@ Decidido:
 - **Índice `(link_id, clicked_at)` em `click_events`**: o Postgres não indexa automaticamente o lado que referencia a FK.
 - **FK `onDelete: Restrict`**: links nunca são apagados, só desativados.
 - **Sem IP em `click_events`**: ver `.agents/rules/security-core.md`, "IP do visitante".
-- **[→ spec]** **Redirect**: `updateManyAndReturn`, disponível no Prisma desde a 6.2.0 para PostgreSQL, faz o UPDATE atômico com RETURNING sem SQL cru. Se o resultado vier vazio, um `findUnique({ slug })` distingue 404 de 410. O caminho de sucesso usa 1 query. Confirmado na referência do Prisma 7. **Nota:** o Prisma 8 (ainda em RC) renomeia o método para `updateAll()`. Como o projeto fixa o Prisma 7.10.0, nada muda agora; ao subir para o 8, renomear a chamada.
-- **Dispositivo guardado só como categoria**: enum `DeviceType { MOBILE, DESKTOP, TABLET, BOT, UNKNOWN }` (`BOT` identificado antes, por `isPreviewBot`; ver `redirect.md`, "Bots de preview"), classificado no momento do clique por uma função pura do domínio (`ClickTracker`), sem lib. A ordem é:
+- **Redirect**: o UPDATE atômico com RETURNING é feito pela API do Prisma, sem SQL cru, e o caminho de sucesso usa 1 query; se nada for atualizado, uma leitura pelo slug distingue 404 de 410. Implementação e a nota sobre o Prisma 8 na spec, §6.3.
+- **Dispositivo guardado só como categoria**: enum `DeviceType { MOBILE, DESKTOP, TABLET, BOT, UNKNOWN }` (`BOT` identificado antes, por `isPreviewBot`; ver `redirect.md`, "Bots de preview"), classificado no momento do clique por uma função pura do domínio (`classifyDevice`, spec §5.6), sem lib. A ordem é:
   1. `Sec-CH-UA-Mobile` (`?1` → `MOBILE`), um Client Hint que só navegadores Chromium enviam;
   2. regex no `User-Agent` (`iPad|Tablet` → `TABLET`; `Mobi|Android|iPhone` → `MOBILE`);
   3. senão `DESKTOP`;
@@ -24,7 +24,7 @@ Decidido:
 
   O UA cru não é persistido (minimização; o UA ajuda em fingerprinting). **Limitação documentada:** desde o iPadOS 13, o Safari do iPad manda UA de Mac, então esses iPads aparecem como `DESKTOP`. Android tablets são detectados. Consequência aceita: o histórico não pode ser reclassificado. Descartados: UA cru com classificação na leitura (duplica a regra no SQL e encarece o `GROUP BY`) e categoria + UA cru com retenção curta (exige job agendado, YAGNI).
 - **Referrer guardado só como host normalizado**: `referrer_host text NULL`, em que `null` significa direto/desconhecido. É extraído por uma função pura do domínio: `new URL()`, só `http:`/`https:`, `hostname` em minúsculas e sem `www.`; qualquer outra coisa vira `null`. O parsing já é a sanitização, porque o header é input hostil (*referral spam*) e um hostname tem no máximo 253 caracteres. Ganha-se pouco com mais do que o host: desde ~2021 os navegadores usam `strict-origin-when-cross-origin` por padrão e só mandam a origem entre sites diferentes. Apps nativos (WhatsApp, e-mail) não mandam referrer, então o dashboard precisa explicar o balde "direto/desconhecido". Descartados: URL completa e host+caminho (quase nunca chegam e podem expor PII de terceiros ao criador do link, que é anônimo). Evolução: agrupar por domínio registrável (`l.facebook.com` e `m.facebook.com` → `facebook.com`), o que exige a Public Suffix List (dependência recusada por ora; ver S3 em `security-blocklist.md`).
-- **O "dia" das estatísticas é o dia em `America/Sao_Paulo`**, com o rótulo "dias no horário de Brasília" no gráfico: **[→ spec]** `date_trunc('day', clicked_at AT TIME ZONE 'America/Sao_Paulo')`. Usa o nome IANA, não o offset `-03:00`, para que o banco de fusos absorva uma eventual volta do horário de verão (abolido pelo Decreto 9.772/2019).
+- **O "dia" das estatísticas é o dia em `America/Sao_Paulo`**, com o rótulo "dias no horário de Brasília" no gráfico: o SQL (spec, §6.4) usa o nome IANA, não o offset `-03:00`, para que o banco de fusos absorva uma eventual volta do horário de verão (abolido pelo Decreto 9.772/2019).
   - **Como a consulta é escrita (RC3, decidido em 2026-10-07): `$queryRaw` com template marcado, em `src/data/`.** O `groupBy` do Prisma agrupa por coluna, não por expressão. O tipo do resultado é declarado à mão (o `count` do Postgres volta como `bigint` e é convertido) e conferido pelo teste contra o Postgres do Docker. Regra geral em `architecture-layers.md`. Descartados: TypedSQL (o `prisma generate --sql` exige o banco de pé e migrado, inclusive para checar tipos no CI e na máquina local), coluna `clicked_day` gravada no clique (muda o modelo fechado e impede a evolução para o fuso de quem vê) e contar no TypeScript (um link com 80 mil cliques no mês trafegaria 80 mil linhas a cada abertura da página).
   - Descartados (fuso):
     - UTC: cliques entre 21h e 23h59 de Brasília cairiam no dia seguinte;
