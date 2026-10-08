@@ -1,6 +1,6 @@
 # short-url — Handoff
 
-**Atualizado em:** 2026-10-08 (tarde) · **Versões anteriores:** `git log -- HANDOFF.md`. A última versão longa, com o detalhe de cada achado da releitura crítica, é `git show 5105255:HANDOFF.md`; a do histórico das sessões de design é `git show a944166:HANDOFF.md`.
+**Atualizado em:** 2026-10-08 (fim do dia) · **Versões anteriores:** `git log -- HANDOFF.md`. A última versão longa, com o detalhe de cada achado da releitura crítica, é `git show 5105255:HANDOFF.md`; a do histórico das sessões de design é `git show a944166:HANDOFF.md`.
 
 ## Goal
 
@@ -13,12 +13,13 @@ Encurtador de links com analytics: o primeiro projeto do portfólio full-stack d
 - **Lacunas achadas ao preparar a spec, fechadas em 2026-10-07:** S1 (migration no `buildCommand` do `vercel.json`, client gerado no `postinstall`, `db:migrate` local/CI e, por consequência, `process.env` em vez do `env()` no `prisma.config.ts`), S2 (AD-004 por lint com lista branca), S3 (sufixos de host do Safe Browsing pela regra da v4, sem a Public Suffix List), S4 (cache em memória das respostas do Google, exigido pelo protocolo; o fail-closed continua como desvio consciente) e S5 (gráfico próprio no servidor, sem Recharts). Nenhuma passa no critério de ADR. A varredura de todos os arquivos foi feita e eles já refletem S1 a S5.
 - **Spec do MVP escrita em 2026-10-07 e APROVADA pelo Rafael em 2026-10-08** (`docs/superpowers/specs/2026-10-07-short-url-mvp-design.md`, status `Aprovada`, ~66 mil caracteres, 16 seções). Os trechos `[→ spec]` saíram de `.agents/` e viraram referências "spec, §N". Com a aprovação, os detalhes de "como" que a spec acrescentou também estão aprovados (lista em "Próximos passos", item 1).
 - **Feito em 2026-10-08, depois da aprovação** (pedido do Rafael, sem implementação): `README.md` mínimo na raiz (validado por teste de aceite); `.agents/context/README.md` apagado (duplicava o índice do `AGENTS.md`); Excalidraw redesenhado do zero, com 7 seções, ícones e a seção RF/RNF (ver "Excalidraw"); `.superpowers/` passou a ser ignorado pelo Git (o HANDOFF já dizia que o *ledger* era ignorado, mas o `.gitignore` não tinha a regra).
-- **Próxima etapa: aguardar o Rafael.** Ele pediu explicitamente para **não começar a implementação** nem os planos até o próximo prompt. Resta 1 tópico aberto (agentes do harness, ver "Tópicos abertos"); depois vem o `superpowers:writing-plans`.
+- **Diagramas exportados em 2026-10-08:** `docs/diagrams/short-url-design.svg` (vai para o README) e `.png` (para compartilhar fora do GitHub), com link no README da raiz e no `docs/README.md`.
+- **Próxima etapa: PENDÊNCIA PRIMÁRIA — o subagente revisor de fatias** (seção própria abaixo). O Rafael quer criá-lo antes da implementação, mas avisou que "temos uma longa conversa pela frente" e **ainda não decidiu nada**. Depois dele vem o `superpowers:writing-plans`. **Sem implementação e sem planos até o Rafael pedir.**
 
 ## Como retomar
 
 1. `git status -sb` deve mostrar `main...origin/main` limpo. Se não estiver, pergunte ao Rafael antes de mexer.
-2. O brainstorming terminou (spec aprovada). **Não invoque `superpowers:writing-plans` nem escreva código sem o Rafael pedir.** Quando ele pedir os planos: `superpowers:writing-plans`, três planos, um por fatia. Mudança na spec depois de aprovada: edite a spec (e a regra, se mudar o quê ou o porquê), rode a autorrevisão e peça nova aprovação.
+2. O brainstorming terminou (spec aprovada). **Comece pela "Pendência primária" (revisor de fatias), uma decisão por mensagem. Não invoque `superpowers:writing-plans` nem escreva código sem o Rafael pedir.** Quando ele pedir os planos: `superpowers:writing-plans`, três planos, um por fatia. Mudança na spec depois de aprovada: edite a spec (e a regra, se mudar o quê ou o porquê), rode a autorrevisão e peça nova aprovação.
 3. A sessão já carrega o **núcleo** (`AGENTS.md`, `architecture-layers`, `security-core`, `code-style`). **Antes de tratar um tema, leia os arquivos que o índice do `AGENTS.md` aponta.** Este HANDOFF é só um índice de estado, pendências e forma de trabalhar.
 4. Decisões novas: **uma por mensagem**, no formato de "Como apresentar decisões". Ao fechar, registre **na hora** no arquivo-fonte e marque aqui.
 5. Ao fim de cada bloco: **varredura de todos os arquivos afetados → atualização → HANDOFF → commit e push**, com autorização do Rafael na mensagem (um Ctrl+Z já apagou trabalho não commitado).
@@ -77,17 +78,44 @@ Todas debatidas com trade-offs e aprovadas pelo Rafael. **Não reabrir sem motiv
 - Valores de setup deixados em aberto de propósito: `<MAJOR>` do Postgres e `<SHA completo>` das ações do CI; região da função, do Neon e do Upstash (a mesma para os três, §9.11).
 - O status muda para `Em andamento` quando a implementação da fatia 1 começar (`specs/README.md`).
 
-**2. Quando o Rafael pedir (não antes):** fechar o tópico aberto dos agentes → `superpowers:writing-plans` para os **três planos** (`docs/superpowers/plans/`, um por fatia, com **Branch de Trabalho** e os arquivos de contexto de cada tarefa) → revisão do Rafael → execução inline da fatia 1. Spec e planos vão direto na `main`.
+**2. Quando o Rafael pedir (não antes):** fechar a "PENDÊNCIA PRIMÁRIA" (revisor de fatias) → `superpowers:writing-plans` para os **três planos** (`docs/superpowers/plans/`, um por fatia, com **Branch de Trabalho** e os arquivos de contexto de cada tarefa) → revisão do Rafael → execução inline da fatia 1. Spec e planos vão direto na `main`.
 
-**3. Na fatia 1 (harness, etapa 2; não antecipar):** hooks quando existirem `lint`, `typecheck` e `test` (skill `update-config`; candidato: medir o limite de 12 mil caracteres); **decidir quem revisa cada fatia** (subagente no modelo mais capaz ou `agy -p`) e criar o agente revisor (`.claude/agents/` e `.agents/agents/`); skills só quando algo se repetir (`superpowers:writing-skills`); `paths:`/`glob` só para arquivo que o agente comprovadamente deixe de ler.
+**3. Na fatia 1 (harness, etapa 2; não antecipar):** hooks quando existirem `lint`, `typecheck` e `test` (skill `update-config`; candidato: medir o limite de 12 mil caracteres); o revisor de fatias saiu daqui e virou a "Pendência primária"; skills só quando algo se repetir (`superpowers:writing-skills`); `paths:`/`glob` só para arquivo que o agente comprovadamente deixe de ler.
 
 **Tópicos levantados pelo Rafael em 2026-10-08:**
 1. ✓ **READMEs de `.agents/`:** `context/README.md` apagado; os de `agents/` e `skills/` mantidos por enquanto (o Git não versiona pasta vazia, e eles explicam como ligar agente/skill nas duas ferramentas).
 2. ✓ **Excalidraw:** atualizado e redesenhado (seção "Excalidraw" abaixo).
 3. ✓ **README da raiz:** mínimo e honesto, sem "como rodar"; a versão completa continua sendo entrega da fatia 3.
-4. **Aberto — agentes do harness.** O Rafael perguntou se o "agente revisor" é para fazer e se seria o único, e o que acho de implementar já os agentes do harness. Resposta dada no relatório de 2026-10-08: o revisor é um subagente com instruções fixas (`.claude/agents/<nome>.md` + `.agents/agents/`) que lê o diff de uma fatia contra a spec e as regras e devolve os problemas antes do PR; **é para fazer, na fatia 1**, antes da primeira PR; recomendação de **só ele por enquanto** (outros agentes sem uma tarefa repetida que os justifique viram manutenção sem uso). Duas decisões ficam para quando o Rafael quiser: (a) criar o revisor agora, antes dos planos (dá: ele revisa contra a spec, que já existe) ou como tarefa do plano 1; (b) quem executa a revisão (subagente Claude no modelo mais capaz × `agy -p`). Apresentar uma por mensagem.
+4. **Agentes do harness** → virou a seção **"PENDÊNCIA PRIMÁRIA"**, logo abaixo.
 
-**Pendências de setup** (anotadas, sem decisão aberta):
+## PENDÊNCIA PRIMÁRIA — subagente revisor de fatias (nada decidido)
+
+**O que é:** um subagente com instruções fixas que, ao fim de uma fatia, lê o diff da branch contra a spec e as regras e devolve os problemas antes do PR. Não escreve código. Complementa a revisão do Rafael no "Files changed". Em 2026-10-08 o Rafael pediu para criá-lo **agora, antes dos planos**, e depois pausou: **todas as decisões abaixo estão abertas**. Recomendação já dada: **só este agente por enquanto** (outros, sem tarefa repetida, viram manutenção sem uso).
+
+**Decisões em aberto (uma por mensagem, formato de "Como apresentar decisões"):**
+- **R1 — modelo** (apresentada em 2026-10-08, sem resposta). Recomendação: **A, Fable 5.1**.
+
+  | Opção | Onde | US$/1M (entrada/saída) | Para o revisor |
+  |---|---|---|---|
+  | A. Fable 5.1 | subagente do Claude Code (`model: fable`) | 10 / 50 | mais capaz que quem escreve o código (Opus 5.5) |
+  | B. Opus 5.5 | `model: opus` | 4 / 20 | mesmo modelo que escreve: repete pontos cegos |
+  | C. Sonnet 5.5 | `model: sonnet` | 2 / 10 | abaixo de quem escreve |
+  | D. Gemini 3.1 Pro (High) | `agy -p --model gemini-3.1-pro-high` | fora da conta Anthropic | outra família (olhar independente), fora do Claude Code; boa 2ª opinião opcional |
+
+  Motivo da A: roda ~3 vezes no projeto (uma por fatia), então o custo pesa pouco e a capacidade extra paga na revisão. Ponto que o agente não vê: se o Rafael usa assinatura, o Fable consome o limite mais rápido.
+- **R2 — um arquivo para as duas ferramentas ou dois.** O Claude Code aceita `model: fable`; o `agy` não tem Fable (tem `claude-opus-5-5-{low,medium,high}`, `claude-sonnet-5-5-*`, `gemini-3.1-pro-{low,high}`, `gemini-3.{6,7,8}-flash-*`, `gpt-oss-120b-medium`). Um *symlink* único (padrão do `.agents/agents/README.md`) obriga o mesmo `model` nas duas.
+- **R3 — ferramentas do revisor:** só leitura (`tools: Read, Grep, Glob`) ou com `Bash` para rodar lint/testes (e o risco de ele mexer em algo).
+- **R4 — quando roda:** fim de cada fatia antes do PR (manual), sob demanda, ou também a cada tarefa.
+- **R5 — o que confere (checklist):** camadas do AD-004, `security-core`, conformidade com a spec da fatia, testes exigidos pela spec §11, textos do `error-map.md`, token/segredo/URL de destino fora de logs, commits no formato.
+- **R6 — formato da saída:** lista por severidade, com `arquivo:linha`, a regra ou seção da spec violada e a correção sugerida.
+
+**Fatos já verificados (2026-10-08):**
+- Claude Code Docs, "Create custom subagents": `model` aceita `sonnet`, `opus`, `haiku`, `fable`, um ID completo (ex.: `claude-opus-5-5`) ou `inherit`; `tools` é lista branca e `disallowedTools` lista negra (o exemplo da doc restringe a `Read, Grep, Glob, Bash`); subagente em segundo plano perde parte das ferramentas embutidas.
+- Antigravity lê `.agents/agents/<nome>.md` ou `<nome>/agent.md`, com frontmatter próprio (`name`, `description`, `tools`, `model`); lista de modelos via `agy models`.
+- Preços: referência de modelos da Anthropic (cache de 2026-10-06): Fable 5.1 US$ 10/50, Opus 5.5 US$ 4/20, Sonnet 5.5 US$ 2/10, Haiku 5.5 US$ 0,10/0,50; todos com 1M de contexto.
+
+## Pendências de setup (anotadas, sem decisão aberta)
+
 - Instalar o Docker (hoje não há Docker nem Postgres) e escolher entre `sudo` e *rootless* (o grupo `docker` equivale a root).
 - Versão major do Postgres ao criar o projeto no Neon (14 a 18); o `compose.yml` usa a mesma.
 - Neon-Managed Integration na Vercel, com limpeza automática de branches; confirmar a **Standard Protection** nos previews (RC1).
@@ -107,7 +135,7 @@ Regras quebradas por assunto (commit `fbbfe7e`): núcleo sempre carregado + índ
 - **A cena antiga (125 elementos) está no backup `excalidraw-backup-1791469337800`** do `localStorage` do excalidraw.com, além dos 7 backups anteriores.
 - **Gerador:** a cena sai de `.superpowers/excalidraw/build-scene.js` (local, ignorado pelo Git), com o teste `test-build.js` (`node test-build.js`: IDs únicos, índices em ordem, nada fora da largura). **Próxima edição: alterar o gerador e regravar a cena inteira, não remendar elementos.** Fluxo usado: teste no Node → colar a função na página → conferir o SHA-256 de `buildScene.toString()` contra o arquivo → ensaio em `window.__newScene` → checagens de sobreposição (texto × texto, texto vazando da caixa, caixas que se cruzam) → gravar → reabrir → print.
 - **Biblioteca de ícones do Rafael:** IndexedDB `excalidraw-library-db`, store `excalidraw-library-store`, chave `libraryData` (354 itens; o painel mostra na mesma ordem, 4 por linha). Índices usados: 17 cadeado, 18 firewall, 19 usuário, 22 servidor, 23 nuvem, 41 Docker, 44 Redis, 50 `</>`, 51 Postgres, 52 GitHub, 55 janela de navegador, 63 Relational DB, 70 Cache, 280 Shield. **Não há logos de Vercel, Next.js, Google nem Node:** foram usados ícones genéricos; se o Rafael adicionar esses logos, trocar no gerador.
-- **Pendente (só quando o Rafael pedir):** ele exporta `.excalidraw` + SVG para `docs/` (o SVG entra no README da fatia 3).
+- **Exportado em 2026-10-08:** `docs/diagrams/short-url-design.svg` (vetor: nítido em qualquer zoom, texto pesquisável, vai para o README) e `.png` (pixels: abre em qualquer lugar, para LinkedIn e anexos). Cada novo PNG soma ~2 MB permanentes ao histórico do Git: **reexportar só em marcos** (fim de cada fatia). O `.excalidraw` não foi exportado: a fonte da cena é o gerador.
 - **Protocolo (via `localStorage` com claude-in-chrome), só quando o Rafael pedir na própria mensagem:** ele fecha as abas do excalidraw.com → o agente abre uma aba sem tocar no canvas e confere a contagem → backup em `excalidraw-backup-<ts>` → ensaio em memória (`window.__newScene`, com asserts) → grava `excalidraw` + `version-dataState`, conferindo que a cena não mudou → fecha a aba → avisa.
 - **Armadilhas:** a página do excalidraw.com não consegue buscar arquivo de um servidor local (`fetch` para `127.0.0.1` falha sem chegar ao servidor): colar o código e conferir o hash; o tema do Rafael é escuro (as cores claras aparecem invertidas); identificar elementos por texto exato, nunca por posição; não imprimir IDs; aba em segundo plano não renderiza; a contagem cai quando o Excalidraw descarta `isDeleted`; a saída do `javascript_tool` é bloqueada com `=`, `?` ou `&` e cortada perto de 1.000 caracteres (ler em partes); o classificador nega neutralizar o `Storage.prototype.setItem` e nega gravar sem pedido explícito: **nunca tentar rota alternativa**.
 

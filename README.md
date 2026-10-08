@@ -39,6 +39,7 @@ Encurtador de links com analytics, sem login: cada link é gerenciado por um tok
 - [PRD](docs/superpowers/PRD.md): problema, público, escopo e critério de "pronto".
 - [ADR](docs/superpowers/ADR.md): decisões de arquitetura (AD-001 a AD-004).
 - [Spec do MVP](docs/superpowers/specs/2026-10-07-short-url-mvp-design.md): design detalhado.
+- [Visão geral do design](docs/diagrams/short-url-design.svg): diagrama com regras, stack, system design, fluxos, modelo de dados, entrega e requisitos.
 - [AGENTS.md](AGENTS.md): instruções para agentes de IA. O desenvolvimento é guiado por IA, com o Claude Code e o Antigravity.
 
 ## Roadmap
