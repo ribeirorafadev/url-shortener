@@ -2,7 +2,7 @@
 
 | Data | Spec | Status | Plan relacionado |
 |------|------|--------|-------------------|
-| 2026-10-07 | [short-url MVP](2026-10-07-short-url-mvp-design.md) | Aprovada (2026-10-08) | a escrever: um plano por fatia (3) |
+| 2026-10-07 | [short-url MVP](2026-10-07-short-url-mvp-design.md) | Aprovada (2026-10-08) | [fatia 1](../plans/2026-10-08-short-url-mvp-1-base.md) · [fatia 2](../plans/2026-10-08-short-url-mvp-2-create-redirect.md) · [fatia 3](../plans/2026-10-08-short-url-mvp-3-manage.md) (aprovados em 2026-10-08) |
 
 ## Status possíveis
 - `Proposta` — spec escrita, aguardando revisão

@@ -29,6 +29,7 @@ Ciclo **maker-checker com TDD**: quem escreve o código não é quem escreve o t
 * **D6d — Quando o QA roda** (decidido em 2026-10-08). O gatilho é o diff da tarefa, não o julgamento de cada vez:
   * **Roda** quando a tarefa toca o que o `next dev` serve: `src/app/`, `src/components/` ou `next.config.ts`. Mais uma **passada de fim de fatia**, antes da revisão final (D5), com o fluxo inteiro da fatia.
   * **Não roda** no domínio, em `src/data/`, em `src/infra/`, no Prisma, no CI, no Docker nem em configuração: não há o que o navegador ver, e os testes unitários, de integração e HTTP cobrem.
+  * **Exceção (2026-10-08):** arquivo de `src/app/_lib/` ou `src/components/` que nenhuma rota usa ainda não roda QA; o plano marca a tarefa da rota que o cobre.
   * Por fatia: na 1, só as tarefas da home provisória e do `next.config.ts` (headers globais, travas, console sem erro de CSP); na 2, criação, redirect, páginas de status e rate limit; na 3, gestão, gráfico e desativação.
   * **Fica fora do QA:** bot de preview (o navegador do MCP tem UA fixo), `HEAD` e concorrência (testes HTTP e de integração); QR lido pela câmera e cópia no celular (roteiro manual do Rafael, spec §11).
   * **Ambiente:** o Opus sobe o `npm run dev` com `USE_LOCAL_FAKES=true` e o Postgres do Docker (base de dev, nunca a `shorturl_test`), roda o fingerprint (D6c, B) e chama o `agy` com a URL base, o que a tarefa entregou e as áreas a explorar. O catálogo de cenários por área fica no `agent.md` do QA.

@@ -1,6 +1,6 @@
 # short-url — Handoff
 
-**Atualizado em:** 2026-10-08 (fim da sessão do harness) · **Versões anteriores:** `git log -- HANDOFF.md`. A versão do fim do design (antes do harness) é `git show cc83c4b:HANDOFF.md`; a longa, com o detalhe da releitura crítica, `git show 5105255:HANDOFF.md`; a do histórico das sessões de design, `git show a944166:HANDOFF.md`.
+**Atualizado em:** 2026-10-08 (planos aprovados; próxima sessão começa a implementação) · **Versões anteriores:** `git log -- HANDOFF.md`. A versão do fim do design (antes do harness) é `git show cc83c4b:HANDOFF.md`; a longa, com o detalhe da releitura crítica, `git show 5105255:HANDOFF.md`; a do histórico das sessões de design, `git show a944166:HANDOFF.md`.
 
 ## Goal
 
@@ -9,20 +9,24 @@ Encurtador de links com analytics: o primeiro projeto do portfólio full-stack d
 ## Onde estamos
 
 - **Design:** 100% fechado (2026-10-07), incluindo a releitura crítica (RC1 a RC10, B-1 a B-4) e as lacunas S1 a S5.
-- **Spec do MVP:** **aprovada** em 2026-10-08 (`docs/superpowers/specs/2026-10-07-short-url-mvp-design.md`, 16 seções).
-- **Harness de execução:** **decidido, implementado e medido** em 2026-10-08 (D1 a D7, seção "Harness de execução"). Há dois agentes prontos, cada um com trava e testes próprios: o **executor** (Sonnet 5.5, Claude Code) e o **QA exploratório** (Gemini 3.8 Flash, `agy`).
-- **Nenhum código da aplicação escrito, de propósito.** Hard-gate: spec aprovada ✓ → harness ✓ → **três planos aprovados** → só então código.
-- **Próxima etapa: os planos (`superpowers:writing-plans`), SÓ QUANDO O RAFAEL MANDAR** (reafirmado por ele em 2026-10-08). Não começar por iniciativa própria.
+- **Spec do MVP:** aprovada em 2026-10-08 (`docs/superpowers/specs/2026-10-07-short-url-mvp-design.md`, 16 seções) e **atualizada com os ajustes dos planos** no mesmo dia (§4.1, 4.3, 5.5, 5.6, 5.9, 6.2, 6.5, 8.2 a 8.5, 9.1, 9.3, 9.8, 11; §16 com a coluna "Tarefa" preenchida e os requisitos `Planejado`). Status no índice: `Aprovada`; muda para `Em andamento` no Step 9 da Tarefa 1 da fatia 1.
+- **Harness de execução:** decidido, implementado e medido em 2026-10-08 (D1 a D7, seção "Harness de execução"): **executor** (Sonnet 5.5, Claude Code) e **QA exploratório** (Gemini 3.8 Flash, `agy`), cada um com trava e testes próprios.
+- **Três planos aprovados pelo Rafael em 2026-10-08** (commitados): `docs/superpowers/plans/2026-10-08-short-url-mvp-1-base.md` (21 tarefas), `…-mvp-2-create-redirect.md` (22) e `…-mvp-3-manage.md` (7). Cada um traz "Como ler", o ciclo padrão da tarefa, "Global Constraints", "Review Focus" (entradas que a spec não cobria, com o teste na tarefa dona), a tabela dos ajustes que fez na spec (histórico do porquê) e a rastreabilidade da §16.
+- **D6d com exceção (decidido em 2026-10-08, opção B):** arquivo de `src/app/_lib/` ou `src/components/` que nenhuma rota usa ainda não roda QA; cada tarefa dessas diz no plano qual tarefa de rota cobre o QA. Registrado no `execution-workflow.md`.
+- **Prazo:** a semana começou com a aprovação dos planos (2026-10-08); no máximo 4 a 5 h por dia; nenhum corte de escopo.
+- **Nenhum código da aplicação escrito ainda.** A próxima sessão começa a implementação.
 
-## Como retomar (sessão limpa)
+## Como retomar (sessão limpa, implementação)
 
 1. `git status -sb` deve mostrar `main...origin/main` limpo. Se não estiver, pergunte ao Rafael antes de mexer.
-2. A sessão já carrega o **núcleo** (`AGENTS.md`, `architecture-layers`, `security-core`, `code-style`). **Antes de tratar um tema, leia os arquivos que o índice do `AGENTS.md` aponta.** Para planos e execução: **`.agents/rules/execution-workflow.md` primeiro**, depois `spec-workflow.md`.
-3. Confira que o executor existe para o Claude Code: o tipo `executor` aparece entre os agentes do `Agent`. Se não aparecer, peça ao Rafael `/agents` ou reiniciar a sessão (os subagentes carregam no início).
-4. **Aguarde o comando do Rafael.** Quando ele mandar começar: `superpowers:writing-plans`, três planos, um por fatia, escritos **para o executor** (ver "Próximos passos"). Antes da fatia 1, a pendência de setup do **Docker** precisa ser decidida com ele.
-5. Decisões novas: **uma por mensagem**, no formato de "Como apresentar decisões". Ao fechar, registre **na hora** no arquivo-fonte e marque aqui.
-6. Ao fim de cada bloco: **varredura de todos os arquivos afetados → atualização → HANDOFF → commit e push, só quando o Rafael mandar na mensagem** (um Ctrl+Z já apagou trabalho não commitado).
-7. Regras do harness de documentação: cada arquivo de `.agents/` com **no máximo 12 mil caracteres** (`wc -m`; o `execution-workflow.md` está com ~11,7 mil, então mudança grande nele pede dividir o arquivo), e a `description` de uma regra com **no máximo 250** (limite do editor do Antigravity); regra nova sob demanda leva `trigger: model_decision` + `description`, entra no índice do `AGENTS.md` e **não** ganha link em `.claude/rules/` (só o núcleo tem); detalhe de implementação novo vai **direto para a spec**, e a regra cita "spec, §N" (`spec-workflow.md`, §8).
+2. A sessão já carrega o **núcleo** (`AGENTS.md`, `architecture-layers`, `security-core`, `code-style`). Leia, nesta ordem: **`.agents/rules/execution-workflow.md`** (o ciclo, as travas, D6d com a exceção, D7) e **o plano da fatia 1 inteiro até a Task 1** (`docs/superpowers/plans/2026-10-08-short-url-mvp-1-base.md`: "Como ler", "Ciclo padrão", "Global Constraints", "Review Focus", "Pré-requisitos"). Antes de cada tarefa, leia os arquivos da linha "Contexto" dela e a seção da spec citada.
+3. Confira que o tipo `executor` aparece entre os agentes do `Agent`. Se não aparecer, peça ao Rafael `/agents` ou reiniciar a sessão (os subagentes carregam no início).
+4. **Primeira decisão com o Rafael: o Docker** (pendência de setup; ver "Pendências de setup"): instalar e rodar com `sudo` ou no modo *rootless* (a doc do Docker avisa que o grupo `docker` equivale a root). Apresentar no formato de "Como apresentar decisões". Ele nunca usou Docker: explicar a peça antes das opções.
+5. Depois: **Tarefa 1 da fatia 1** (branch `feat/mvp-1-base` a partir da `main` atualizada; criar o ledger `.superpowers/sdd/mvp-1-base/progress.md`). As Tarefas 1 a 4 não precisam de Docker; a 5 precisa dele e da major do Postgres do projeto no Neon (pré-requisito do Rafael).
+6. **Cada tarefa segue o ciclo padrão do plano** e termina em **pausa com o Rafael**: o teste escrito, o que o executor entregou, as devoluções, o QA, o placar do checklist D7 e a mensagem de commit. **Commit e push só quando o Rafael mandar na mensagem.** Itens 🔎 do plano são verificações obrigatórias; o que mudar no "como" vai para a spec.
+7. Decisões novas: **uma por mensagem**, no formato de "Como apresentar decisões". Ao fechar, registre **na hora** no arquivo-fonte e marque aqui.
+8. Ao fim de cada bloco: **varredura de todos os arquivos afetados → atualização → HANDOFF → commit e push, só quando o Rafael mandar** (um Ctrl+Z já apagou trabalho não commitado).
+9. Regras do harness de documentação: cada arquivo de `.agents/` com **no máximo 12 mil caracteres** (`wc -m`; o `execution-workflow.md` está com ~11,9 mil: **qualquer acréscimo nele pede dividir o arquivo antes**), e a `description` de uma regra com **no máximo 250** (limite do editor do Antigravity); regra nova sob demanda leva `trigger: model_decision` + `description`, entra no índice do `AGENTS.md` e **não** ganha link em `.claude/rules/` (só o núcleo tem); detalhe de implementação novo vai **direto para a spec**, e a regra cita "spec, §N" (`spec-workflow.md`, §8).
 
 ## Fontes da verdade
 
@@ -53,7 +57,8 @@ Todas debatidas com trade-offs e aprovadas pelo Rafael. **Não reabrir sem motiv
 | `npm run dev` sem chaves (`USE_LOCAL_FAKES` no `.env.development.local`, duas travas) | — | `architecture-local-dev.md` |
 | Lint (**AD-004 por lista branca**), kebab-case, Conventional Commits, branches e fatias, PR | S2 | `code-style.md` |
 | Formato de spec/plano/ADR, regra × spec | — | `spec-workflow.md` |
-| **Execução dos planos:** testes do Opus, executor Sonnet, travas, QA do Gemini, quando o QA roda, checklist da revisão | D1 a D7 (harness) | `execution-workflow.md` |
+| **Execução dos planos:** testes do Opus, executor Sonnet, travas, QA do Gemini, quando o QA roda (**com a exceção de `_lib` sem rota**), checklist da revisão | D1 a D7 (harness) | `execution-workflow.md` |
+| **Planos das três fatias**, com os furos da spec corrigidos (ponto final na R3/R4, lista branca da S2, janela do gráfico) e a entrada fina com *handlers* testáveis | — | `docs/superpowers/plans/`, spec |
 
 **Defeitos já corrigidos:** o SQL atômico não checava `deactivated_at` (2026-09-30); o `USE_LOCAL_FAKES` estava no `.env.local`, que o `next build` também lê (2026-10-02).
 
@@ -118,12 +123,12 @@ Progresso num *ledger* em `.superpowers/sdd/<plano>/progress.md` (ignorado pelo 
 
 ## Prazo, fatias e execução
 
-- **Prazo:** a semana começa **quando os três planos forem aprovados**; no máximo 4 a 5 h por dia; **nenhum corte de escopo**. Estimativa não oficial: 28 a 35 h.
+- **Prazo:** a semana começou em **2026-10-08**, com a aprovação dos três planos; no máximo 4 a 5 h por dia; **nenhum corte de escopo**. Estimativa não oficial: 28 a 35 h.
 - **Três fatias, cada uma com plano, branch e PR próprios** (`code-style.md`, "Branches e fatias"):
   1. `feat/mvp-1-base`: setup, Docker, CI, ruleset, Vercel, Neon e domínio com testes. **Primeira PR, feita em conjunto** (o Rafael nunca usou PR: abrir pelo site do GitHub, ler "Files changed", acompanhar o CI, corrigir na mesma branch).
   2. `feat/mvp-2-create-redirect`: criação (Google e rate limit), redirect, teste de concorrência, testes HTTP.
   3. `feat/mvp-3-manage`: página de gestão e README.
-- QA por fatia (D6d): na 1, só as tarefas da home provisória e do `next.config.ts`; na 2, criação, redirect, páginas de status e rate limit; na 3, gestão, gráfico e desativação.
+- QA por tarefa já está marcado em cada plano (D6d e a exceção): na fatia 1, Tarefas 3, 4 e 21; na 2, Tarefas 15, 20, 21 e 22; na 3, Tarefas 4, 5 e 7.
 
 ## Próximos passos
 
@@ -131,21 +136,23 @@ Progresso num *ledger* em `.superpowers/sdd/<plano>/progress.md` (ignorado pelo 
 - Estrutura: §1–3 contexto; §4 arquitetura (árvore de arquivos, ponto de montagem, logs); §5 domínio; §6 dados; §7 Safe Browsing; §8 entrada; §9 configuração; §10 erros; §11 testes; §12 fatias; §13 limitações; §14 notas sobre o AD-004; §15 alternativas; §16 requisitos (RF01–RF14, RNF01–RNF12).
 - Acrescentado em 2026-10-08 (§4.1): fakes e auxiliares de teste em `__fakes__/`, protegidos pela trava do executor.
 - **Detalhes de "como" aprovados com a spec** (não reabrir sem motivo novo): referrers em top 10 + "outros" (§5.9); R4 também recusa `.local`, `.home.arpa`, `.internal` e as faixas IPv4 de uso especial da RFC 6890 (§5.5); `site.com:8080/x` cai na R1 (§5.5); dois bancos no container, `shorturl` e `shorturl_test` (§9.7); textos das páginas 404, 429 e da prévia de bot (§8.6); `poweredByHeader: false` (§9.4); gestão com banco fora responde 200 (§8.5, §13); `CANARY`/`FRAME_ONLY` ignorados (§7.1); `RedirectService` no domínio (§5.8, §14); `UrlThreatChecker` devolve `'unavailable'` (§5.2); testes nunca leem `.env*` e recusam rodar fora de `127.0.0.1`/`localhost` (§9.8).
-- Itens **(conferir na tarefa)**, que os planos precisam virar passo de verificação: `select` no `updateManyAndReturn` e um único `UPDATE … RETURNING` (senão `$queryRaw`); erros de conectividade do Prisma/`pg` (§6.5); API do `@upstash/ratelimit` (ler o código publicado); padrões dos UAs de bots; padrões da lista branca do ESLint; `revalidatePath` na desativação; `404` real da gestão sem `loading.tsx`; tipo do `defineConfig` com URL ausente.
+- Itens **(conferir na tarefa)**, que **já viraram passos 🔎 nos planos**: `select` no `updateManyAndReturn` e um único `UPDATE … RETURNING` (senão `$queryRaw`); erros de conectividade do Prisma/`pg` (§6.5); API do `@upstash/ratelimit` (ler o código publicado); padrões dos UAs de bots; padrões da lista branca do ESLint; `revalidatePath` na desativação; `404` real da gestão sem `loading.tsx`; tipo do `defineConfig` com URL ausente.
 - Valores de setup em aberto de propósito: `<MAJOR>` do Postgres e `<SHA completo>` das ações do CI; região da função, do Neon e do Upstash (a mesma para os três, §9.11).
 - O status da spec muda para `Em andamento` quando a fatia 1 começar (`specs/README.md`).
 
-**2. Quando o Rafael mandar (não antes): os planos.**
-- `superpowers:writing-plans`, **três planos** em `docs/superpowers/plans/`, um por fatia, no formato do `spec-workflow.md` §7 (cabeçalho com **Branch de Trabalho**; o aviso "Para executores agenticos" já aponta para o `execution-workflow.md`).
-- **Escritos para o executor:** cada tarefa diz os arquivos de contexto a ler, o teste que o Opus escreve primeiro (caminho e casos), os arquivos de produção que o executor cria, o comando de verificação, se o QA roda (gatilho D6d) e o critério de pronto. Tarefas pequenas, uma peça por vez (o Rafael acompanha e revisa cada uma).
-- As tarefas de setup da fatia 1 que mexem em `package.json`, `.npmrc`, `.gitignore`, configs do Vitest ou `.github/` com dependências são do **Opus** (a trava barra o executor); o plano diz quem faz cada uma.
-- Revisão do Rafael → aprovação → a semana começa → execução da fatia 1 na branch `feat/mvp-1-base`. Spec e planos vão direto na `main`.
+**2. Planos aprovados em 2026-10-08.**
+- Três planos em `docs/superpowers/plans/`, um por fatia, no formato do `spec-workflow.md` §7, escritos para o executor: cada tarefa diz quem faz (Opus no setup, executor no resto), os arquivos de contexto, os casos de teste com valores concretos, os arquivos de produção, o comando de verificação, se o QA roda e a mensagem de commit. O "como" continua na spec, citado por seção.
+- **Furos da spec achados ao escrever os casos** (corrigidos na spec): host com ponto final passava pela R3 e pela R4 (`localhost.`); a lista branca da S2 (`'!../*'`) deixava o domínio importar `../data/...` e barrava o `vitest` nos testes do domínio; a janela do gráfico podia ficar invertida na virada do dia (relógio do banco à frente do da função).
+- Detalhes novos na spec: entrada fina com *handlers* testáveis (`handleCreateLink`, `handleRedirect`, `loadManagementPage`, `handleDeactivateLink`), `createPrismaClient`, `withDatabaseErrors`, `getUrlThreatChecker`, `UpstashRateLimiter` com limitadores injetados, script `db:migrate:test`, ESLint 9.x, testes das configs na raiz, `globalSetup` do HTTP que recusa a porta 3000 ocupada, link desativado sem o botão "Desativar".
+- Spec, planos e regras atualizados foram commitados e enviados na `main` em 2026-10-08.
 
-**3. Na fatia 1 (não antecipar):** hooks de projeto quando existirem `lint`, `typecheck` e `test` (skill `update-config`; candidato: medir o limite de 12 mil caracteres); skills só quando algo se repetir (`superpowers:writing-skills`); `paths:`/`glob` só para arquivo que o agente comprovadamente deixe de ler.
+**3. Agora (próxima sessão):** decisão do Docker → fatia 1 na branch `feat/mvp-1-base`, Tarefa 1 em diante (ver "Como retomar"). As fatias 2 e 3 nascem da `main` depois do merge da anterior.
 
-## Pendências de setup (anotadas, sem decisão aberta)
+**4. Na fatia 1 (não antecipar):** hooks de projeto quando existirem `lint`, `typecheck` e `test` (skill `update-config`; candidato: medir o limite de 12 mil caracteres); skills só quando algo se repetir (`superpowers:writing-skills`); `paths:`/`glob` só para arquivo que o agente comprovadamente deixe de ler.
 
-- **Instalar o Docker** (hoje não há Docker nem Postgres) e escolher entre `sudo` e *rootless* (o grupo `docker` equivale a root). Necessário já na fatia 1 (migration `init`, testes de integração) e no QA (banco de dev).
+## Pendências de setup
+
+- **Instalar o Docker: PRÓXIMA DECISÃO, a primeira da sessão de implementação** (hoje não há Docker nem Postgres). Escolher entre `sudo` e *rootless* (o grupo `docker` equivale a root). Necessário a partir da Tarefa 5 da fatia 1 (Postgres, migration `init`, testes de integração) e no QA com banco.
 - Versão major do Postgres ao criar o projeto no Neon (14 a 18); o `compose.yml` usa a mesma.
 - Neon-Managed Integration na Vercel, com limpeza automática de branches; confirmar a **Standard Protection** nos previews (RC1).
 - Chaves do Upstash e do Google também no ambiente **Preview** (RC4).

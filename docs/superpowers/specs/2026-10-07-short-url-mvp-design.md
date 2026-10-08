@@ -30,17 +30,22 @@ Regras: `.agents/rules/architecture-layers.md` (núcleo), AD-004.
 .
 ├── .github/workflows/ci.yml
 ├── .npmrc                         → §9.2
+├── components.json                → configuração do CLI do shadcn/ui
 ├── compose.yml                    → §9.7
 ├── docker/postgres-init.sql       → cria o banco de teste (§9.7)
 ├── eslint.config.mjs              → §9.3
+├── eslint.config.test.ts          → §9.3 (prova permanente das regras de import)
 ├── next.config.ts                 → §9.4
+├── next.config.test.ts            → §9.4 (travas e headers)
+├── postcss.config.mjs             → Tailwind 4 (@tailwindcss/postcss)
 ├── prisma.config.ts               → §9.5
 ├── prisma/schema.prisma           → §6.1
 ├── prisma/migrations/
 ├── vercel.json                    → §9.6
 ├── vitest.config.mts              → §9.8 (unit + integração)
 ├── vitest.http.config.mts         → §9.8 (testes HTTP)
-├── tests/http/                    → §11 (testes HTTP)
+├── tests/http/                    → §11 (testes HTTP; global-setup.ts e helpers/database.ts)
+├── tests/setup/integration-setup.ts → §9.8 (trava de host e TRUNCATE)
 ├── .env.example                   → §9.9
 └── src/
     ├── app/
@@ -56,7 +61,11 @@ Regras: `.agents/rules/architecture-layers.md` (núcleo), AD-004.
     │       ├── rate-limit.ts              → §8.2 (porta, números, adaptadores)
     │       ├── create-link-form.ts        → §8.3 (rodada de formato)
     │       ├── create-link-state.ts       → §8.3 (tipo e mapeamento de erros)
+    │       ├── create-link-handler.ts     → §8.3 (orquestra a criação)
     │       ├── redirect-handler.ts        → §8.4 (orquestra o redirect)
+    │       ├── manage-page-loader.ts      → §8.5 (carrega a gestão)
+    │       ├── manage-labels.ts           → §8.5 (textos da gestão)
+    │       ├── deactivate-link-handler.ts → §8.5 (orquestra a desativação)
     │       ├── status-pages.ts            → §8.6 (HTML fixo)
     │       ├── qr-code.ts                 → §8.3
     │       └── log.ts                     → §4.4
@@ -64,9 +73,11 @@ Regras: `.agents/rules/architecture-layers.md` (núcleo), AD-004.
     │   ├── ui/                            → shadcn/ui (button, input, label, card, alert)
     │   ├── create-link-form.tsx           → 'use client'
     │   ├── expiration-field.tsx           → 'use client' (rótulo da P7)
+    │   ├── expiration-label.ts            → §8.3 (cálculo do rótulo da P7, puro)
     │   ├── link-result-card.tsx           → 'use client' (copiar, baixar, beforeunload)
     │   ├── deactivate-link-form.tsx       → 'use client' (passo de confirmação)
     │   └── daily-clicks-chart.tsx         → Server Component (S5)
+    ├── lib/utils.ts                       → cn() do shadcn/ui
     ├── domain/                            → §5 (sem nenhum import de pacote)
     │   ├── link.ts · ports.ts · errors.ts
     │   ├── slug.ts · manage-token.ts · sao-paulo-time.ts
@@ -85,7 +96,9 @@ Regras: `.agents/rules/architecture-layers.md` (núcleo), AD-004.
         └── unavailable-url-threat-checker.ts
 ```
 
-Os testes ficam ao lado do arquivo testado (`link-service.test.ts`); os de integração com Postgres usam o sufixo `.int.test.ts`, e os HTTP ficam em `tests/http/*.http.test.ts`. Fakes e auxiliares de teste (ex.: os repositórios em memória da §11) ficam em `__fakes__/` ao lado do código (`src/domain/__fakes__/`); a trava do executor protege essa pasta, como protege os testes (`.agents/rules/execution-workflow.md`, D4).
+Os testes ficam ao lado do arquivo testado (`link-service.test.ts`); os de integração com Postgres usam o sufixo `.int.test.ts`, e os HTTP ficam em `tests/http/*.http.test.ts`. Fakes e auxiliares de teste (ex.: os repositórios em memória da §11) ficam em `__fakes__/` ao lado do código (`src/domain/__fakes__/`: `InMemoryLinkRepository`, `InMemoryClickEventRepository`, `ProgrammableThreatChecker`, `FixedClock`); a trava do executor protege essa pasta, como protege os testes (`.agents/rules/execution-workflow.md`, D4).
+
+**Entrada fina (`architecture-testing-ci.md`):** `route.ts`, `page.tsx` da gestão e as Server Actions só montam as dependências reais e chamam um *handler* ou *loader* de `src/app/_lib/` que recebe tudo por parâmetro e é testado no Vitest sem servidor.
 
 **Rotas fixas na raiz:** só `/manage` (6 caracteres). Nenhuma rota fixa nova pode ter exatamente 7 caracteres `[A-Za-z0-9]` (B-4, `redirect.md`).
 
@@ -102,7 +115,10 @@ export function getLinkService(): LinkService
 export function getRedirectService(): RedirectService
 export function getClickEventRepository(): ClickEventRepository
 export function getRateLimiter(): RateLimiter
+export function getUrlThreatChecker(): UrlThreatChecker // usado pelo getLinkService; exposto para o teste
 ```
+
+- O `UrlValidator` do `getLinkService` recebe `resolveAppOrigin(process.env)?.ownHosts ?? []`. Sem origem, a action da criação recusa antes de chamar o `create` (§8.3, passo 2), então a lista vazia nunca chega a validar uma URL.
 
 - **Nenhum módulo abre conexão ou cria cliente externo no import.** O `next build` não precisa de banco nem de chave.
 - **Falsos locais (trava 1, `architecture-local-dev.md`):** `useLocalFakes = process.env.NODE_ENV === 'development' && process.env.USE_LOCAL_FAKES === 'true'`. Com ele, injeta `LocalFakeUrlThreatChecker` e `InMemoryRateLimiter`.
@@ -233,12 +249,12 @@ Algoritmo (a entrada já chega com `trim()` e com no máximo 2048 caracteres):
 1. `new URL(input)`. Se lançar, **R6**: `new URL('https://' + input)`. Se lançar de novo → `'invalid'`. Consequência documentada: `localhost:3000` e `site.com:8080/x` são lidos como protocolo e caem na R1 (o usuário digita o `https://`).
 2. **R1:** `protocol` fora de `http:`/`https:` → `'protocol'`.
 3. **R2:** `username` ou `password` não vazios → `'credentials'`.
-4. **R4:** sobre `hostname` (já em minúsculas e em punycode pelo parser WHATWG, que também normaliza IPv4 em octal, hexadecimal ou com menos de 4 partes):
+4. **R4:** sobre `hostname` (já em minúsculas e em punycode pelo parser WHATWG, que também normaliza IPv4 em octal, hexadecimal ou com menos de 4 partes), **sem um ponto final** (o parser mantém `localhost.` e `site.com.`, que o DNS trata como o mesmo nome; medido no Node 24; vale também para a R3):
    - começa com `[` → `'ipv6-literal'` (RC10);
    - `localhost` ou termina em `.localhost` (RFC 6761), `.local` (RFC 6762), `.home.arpa` (RFC 8375) ou `.internal` (reservado pela ICANN em 2024) → `'not-public'`;
    - sem ponto (`intranet`) → `'not-public'`;
    - IPv4 em faixa não pública do registro IANA de endereços de uso especial (RFC 6890): `0/8`, `10/8`, `100.64/10`, `127/8`, `169.254/16`, `172.16/12`, `192.0.0/24`, `192.0.2/24`, `192.168/16`, `198.18/15`, `198.51.100/24`, `203.0.113/24`, `224/4`, `240/4` → `'not-public'`.
-5. **R3:** `hostname` igual a algum dos `ownHosts` → `'own-domain'`.
+5. **R3:** `hostname` sem o ponto final igual a algum dos `ownHosts` → `'own-domain'`.
 6. **R5:** `url.href.length > 2048` → `'too-long'`.
 7. Sucesso: `href = url.href` (B-2: o mesmo texto é gravado, enviado à R7 e usado no `Location`) e `isInsecure = protocol === 'http:'`.
 
@@ -255,8 +271,8 @@ export function extractReferrerHost(referer: string | null): string | null
 ```
 
 - `isPreviewBot`: lista fixa, cada padrão na forma mais específica documentada (B-3): `/^WhatsApp\//`, `/^Slackbot/`, `/^facebookexternalhit\//`, `/^Twitterbot\//`, `/^TelegramBot/`, `/^LinkedInBot\//`, `/Discordbot\//`. **A lista exata de padrões é conferida na documentação de cada plataforma na tarefa**, e o teste inclui UAs reais dos navegadores embutidos do Facebook (`FBAN`/`FBAV`) e do Instagram, que devem continuar humanos.
-- `classifyDevice`: sem UA → `'UNKNOWN'`; `secChUaMobile === '?1'` → `'MOBILE'`; `/iPad|Tablet/i` → `'TABLET'`; `/Mobi|Android|iPhone/i` → `'MOBILE'`; senão `'DESKTOP'`.
-- `extractReferrerHost`: `new URL(referer)` dentro de `try`; só `http:`/`https:`; `hostname` em minúsculas, sem `www.` no início; qualquer falha → `null`.
+- `classifyDevice`: sem UA (ausente ou `''`) → `'UNKNOWN'`; `secChUaMobile === '?1'` → `'MOBILE'`; `/iPad|Tablet/i` → `'TABLET'`; `/Mobi|Android|iPhone/i` → `'MOBILE'`; senão `'DESKTOP'`.
+- `extractReferrerHost`: `new URL(referer)` dentro de `try`; só `http:`/`https:`; `hostname` em minúsculas, sem um `www.` no início; host vazio depois disso (`https://www./`) ou qualquer falha → `null`.
 
 ### 5.7 `LinkService` (`link-service.ts`)
 
@@ -359,7 +375,8 @@ export function dailyWindow(createdAt: Date, now: Date): { fromDay: string; toDa
 export function buildClickStats(raw: RawClickStats, clickCount: number, window: { fromDay: string; toDay: string }): ClickStats
 ```
 
-- `dailyWindow`: `toDay = todayInSaoPaulo(now)`; `fromDay = max(addDays(toDay, -29), todayInSaoPaulo(createdAt))` (30 dias, ou desde a criação).
+- `dailyWindow`: `toDay = todayInSaoPaulo(now)`; `fromDay = min(toDay, max(addDays(toDay, -29), todayInSaoPaulo(createdAt)))` (30 dias, ou desde a criação). O `min` cobre o `created_at` gravado pelo relógio do banco alguns milissegundos à frente do relógio da função na virada do dia (B-1): a janela nunca fica invertida.
+- `byDevice` sem os dispositivos com zero, em ordem decrescente de contagem (empate: `MOBILE`, `DESKTOP`, `TABLET`, `UNKNOWN`). `topReferrers` em ordem decrescente (empate: host em ordem alfabética, `null` por último). Saída determinística para o teste e para a tela.
 - O `getManagementView` chama `clickEvents.getStats(id, startOfDayInSaoPaulo(fromDay))` e passa o resultado a `buildClickStats`, que completa os dias vazios com zero.
 - **Referrers: os 10 maiores, e o resto somado em "outros".** Detalhe desta spec, não decisão de regra: limita a tela contra *referral spam* sem mudar o banco.
 
@@ -425,11 +442,20 @@ import { attachDatabasePool } from '@vercel/functions'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { PrismaClient } from './generated/prisma/client' // caminho exato conferido no generate
 
+export function createPrismaClient(options: {
+  connectionString: string
+  max?: number                       // teste de concorrência: 20
+  connectionTimeoutMillis?: number   // padrão 5000; o teste de timeout usa menos
+  logQueries?: boolean               // teste do UPDATE atômico (uma instrução só)
+}): { prisma: PrismaClient; pool: Pool }
+
 let prisma: PrismaClient | undefined
 export function getPrismaClient(): PrismaClient // cria na primeira chamada
 ```
 
-Na primeira chamada: `new Pool({ connectionString: process.env.DATABASE_URL, idleTimeoutMillis: 5000, connectionTimeoutMillis: 5000 })`, `attachDatabasePool(pool)`, `new PrismaClient({ adapter: new PrismaPg(pool) })`. `DATABASE_URL` ausente → erro explícito (fail-fast). Singleton no escopo do módulo, também no `next dev` (guardado em `globalThis` para sobreviver ao recarregamento).
+`createPrismaClient`: `new Pool({ connectionString, max, idleTimeoutMillis: 5000, connectionTimeoutMillis: 5000 })` e `new PrismaClient({ adapter: new PrismaPg(pool) })`. Os testes de integração criam os próprios clientes com ela e encerram com `pool.end()` (o `$disconnect()` não fecha um pool externo; conferir na tarefa).
+
+`getPrismaClient`, na primeira chamada: `createPrismaClient({ connectionString: process.env.DATABASE_URL })` e `attachDatabasePool(pool)`. `DATABASE_URL` ausente → erro explícito que cita o nome da variável, nunca uma URL (fail-fast). Singleton no escopo do módulo, também no `next dev` (guardado em `globalThis` para sobreviver ao recarregamento). Os repositórios recebem o `PrismaClient` pelo construtor.
 
 ### 6.3 `PrismaLinkRepository` (`prisma-link-repository.ts`)
 
@@ -502,7 +528,12 @@ O tipo do resultado é declarado à mão e conferido pelo teste contra o Postgre
 
 ### 6.5 Erros do banco (`database-errors.ts`)
 
-O domínio define `RepositoryUnavailableError` (`errors.ts`). A camada de dados traduz para ele os erros de conectividade: timeout de conexão do `pg`, `ECONNREFUSED`, `ETIMEDOUT`, `ENOTFOUND` e os códigos do Prisma `P1001`, `P1002` e `P2024`. **A lista exata é conferida na tarefa, derrubando o Postgres do Docker e lendo o erro real.** Qualquer outro erro propaga como inesperado.
+```ts
+export function isDatabaseUnavailableError(error: unknown): boolean
+export function withDatabaseErrors<T>(operation: () => Promise<T>): Promise<T> // traduz e relança
+```
+
+O domínio define `RepositoryUnavailableError` (`errors.ts`, com `cause`). Cada método dos repositórios passa por `withDatabaseErrors`, que traduz para ele os erros de conectividade: timeout de conexão do `pg`, `ECONNREFUSED`, `ETIMEDOUT`, `ENOTFOUND` e os códigos do Prisma `P1001`, `P1002` e `P2024`. **A lista exata é conferida na tarefa, derrubando o Postgres do Docker e lendo o erro real.** Os testes simulam os dois casos sem derrubar o container: cliente para uma porta fechada (`127.0.0.1:1`, recusa) e um servidor TCP local mudo (timeout). Qualquer outro erro propaga como inesperado, inclusive o `P2002`.
 
 ## 7. Integrações externas (`src/infra/`)
 
@@ -590,8 +621,10 @@ export interface RateLimiter {
 }
 ```
 
-- **`UpstashRateLimiter`:** três `new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(n, janela), prefix, timeout: 1000, analytics: false })`, com `redis = new Redis({ url, token })` de `@upstash/redis`. `prefix = short-url:<VERCEL_ENV ou local>:<create-min|create-day|redirect>` (previews separados da produção). `limit(key)`: `success` → segue; `!success` → `limited` com `retryAfterSeconds = ceil((reset − agora) / 1000)`; `reason === 'timeout'` ou exceção → `unavailable`, com log `rate-limiter-unavailable`. Na criação, a checagem diária só roda se a do minuto passou. **(conferir na tarefa no código publicado de `@upstash/ratelimit`, como na RC4.)**
-- **`InMemoryRateLimiter`:** janelas deslizantes com os mesmos números, num `Map` por instância (só `npm run dev`).
+- **`UpstashRateLimiter`:** recebe os três limitadores pelo construtor, para o teste usar falsos: `constructor(deps: { createPerMinute: Limiter; createPerDay: Limiter; redirectPerMinute: Limiter; now?: () => number })`, com `type Limiter = { limit(key: string): Promise<{ success: boolean; reset: number; reason?: string }> }`. `limit(key)`: `success` → segue; `!success` → `limited` com `retryAfterSeconds = ceil((reset − agora) / 1000)`; `reason === 'timeout'` ou exceção → `unavailable`, com log `rate-limiter-unavailable` (sem a chave). Na criação, a checagem diária só roda se a do minuto passou.
+- **`createUpstashRateLimiter(env: { url: string; token: string; vercelEnv: string | undefined })`** monta os reais: três `new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(n, janela), prefix, timeout: 1000, analytics: false })`, com `redis = new Redis({ url, token })` de `@upstash/redis` e `prefix = rateLimitPrefix(vercelEnv, scope)`. **(conferir na tarefa no código publicado de `@upstash/ratelimit`, como na RC4.)**
+- **`rateLimitPrefix(vercelEnv: string | undefined, scope: 'create-min' | 'create-day' | 'redirect'): string`** → `short-url:<VERCEL_ENV ou local>:<scope>` (previews separados da produção).
+- **`InMemoryRateLimiter`:** `constructor(deps?: { now?: () => number })`; janelas deslizantes com os mesmos números, num `Map` por instância (só `npm run dev`).
 - **`UnavailableRateLimiter`:** sempre `unavailable`.
 - **Chave (`client-ip.ts`):** `rateLimitKey(ip: string | undefined, nodeEnv: string | undefined): string | null`. `nodeEnv === 'development'` → `'local-dev'`. `ip` ausente → `null`. IPv4 com 4 partes decimais válidas → ele mesmo. IPv4 mapeado (`::ffff:a.b.c.d`) → o IPv4. IPv6 → expande o `::`, minúsculas, 4 primeiros grupos com 4 dígitos + `::/64`. Qualquer outra coisa → `null`. `null` vale como `unavailable` (RC5).
 - **O IP vem de** `ipAddress(request)` no redirect e `ipAddress(await headers())` na action (`@vercel/functions`, lê o `x-real-ip`).
@@ -610,7 +643,14 @@ export function parseCreateLinkForm(form: FormData):
   | { ok: false; errors: FormFieldError[] }
 ```
 
-`trim()` em todos os campos (P4). `url`: vazio → `'required'`; mais de 2048 → `'too-long'`. `maxClicks`: vazio → `null`; fora de `/^\d+$/` → `'not-integer'`; senão `Number()`. Expiração: os dois campos preenchidos → `'both'`; duração fora da lista → `'invalid-duration'`; data fora de `/^\d{4}-\d{2}-\d{2}$/` ou que não sobrevive a `Date.UTC` ida e volta (`2026-02-30`) → `'invalid-date'`; nenhum → `{ kind: 'none' }`. Junta os erros de todos os campos.
+```ts
+export type FormFieldError =
+  | { field: 'url'; code: 'required' | 'too-long' }
+  | { field: 'maxClicks'; code: 'not-integer' }
+  | { field: 'expiration'; code: 'both' | 'invalid-duration' | 'invalid-date' }
+```
+
+`trim()` em todos os campos (P4). Campo ausente vale como vazio; campo que chega como `File` (requisição forjada) também vale como vazio no `url` e como `'not-integer'` no `maxClicks`, sem exceção; campo repetido usa o primeiro (`form.get`). `url`: vazio → `'required'`; mais de 2048 → `'too-long'`. `maxClicks`: vazio → `null`; fora de `/^\d+$/` → `'not-integer'`; senão `Number()`. Expiração: os dois campos preenchidos → `'both'`; duração fora da lista → `'invalid-duration'`; data fora de `/^\d{4}-\d{2}-\d{2}$/` ou que não sobrevive a `Date.UTC` ida e volta (`2026-02-30`) → `'invalid-date'`; nenhum → `{ kind: 'none' }`. Junta os erros de todos os campos, um por campo, na ordem `url`, `maxClicks`, `expiration`.
 
 **Estado (`create-link-state.ts`):**
 
@@ -632,14 +672,36 @@ export type CreateLinkState =
     }
 ```
 
-As mensagens saem de uma função `toCreateLinkErrorState(...)` que segue o `error-map.md` à risca; o domínio só devolve códigos.
+As mensagens saem de uma função que segue o `error-map.md` à risca; o domínio só devolve códigos:
+
+```ts
+export type CreateLinkFailure =
+  | { kind: 'form'; errors: FormFieldError[] }
+  | { kind: 'domain'; result: Exclude<CreateLinkResult, { status: 'created' }> }
+  | { kind: 'rate-limited'; scope: 'minute' | 'day' }
+  | { kind: 'unavailable' }
+  | { kind: 'unexpected' }
+export function toCreateLinkErrorState(failure: CreateLinkFailure): Extract<CreateLinkState, { status: 'error' }>
+```
 
 **Server Action (`actions/create-link.ts`):**
 
 ```ts
 'use server'
 export async function createLink(prev: CreateLinkState, form: FormData): Promise<CreateLinkState>
+
+// src/app/_lib/create-link-handler.ts: a action só monta as dependências reais e chama
+export function handleCreateLink(form: FormData, deps: {
+  ip: string | undefined                 // ipAddress(await headers())
+  nodeEnv: string | undefined
+  env: Record<string, string | undefined> // para o resolveAppOrigin
+  rateLimiter: RateLimiter
+  linkService: Pick<LinkService, 'create'>
+  generateQrCode: (url: string) => Promise<string>
+}): Promise<CreateLinkState>
 ```
+
+Passos do `handleCreateLink`:
 
 1. `rateLimitKey(ipAddress(await headers()), NODE_ENV)` → `getRateLimiter().checkCreation(key)`: `limited` → mensagem do minuto ou do dia; `unavailable` (ou chave `null`) → "Não foi possível criar o link agora…" + log.
 2. `resolveAppOrigin(process.env)`: `null` → a mesma mensagem + log de erro (RC2, fail-fast).
@@ -649,7 +711,7 @@ export async function createLink(prev: CreateLinkState, form: FormData): Promise
 
 **QR (`qr-code.ts`):** `QRCode.toDataURL(shortUrl, { width: 512, margin: 2, errorCorrectionLevel: 'M' })` da `qrcode@1.5.4`. A mesma função serve a gestão.
 
-**Tela:** `create-link-form.tsx` usa `useActionState(createLink, { status: 'idle' })`; botão desabilitado com "Encurtando…" enquanto `isPending` (P3). `expiration-field.tsx` mostra "Expira em DD/MM/AAAA às 23:59 (horário de Brasília)" ou "Expira **hoje** às 23:59 (horário de Brasília)", com `Intl.DateTimeFormat` no navegador (P7). `link-result-card.tsx`: link de gestão em destaque acima do link curto, com o aviso "guarde este link: não há recuperação" (P5-C); `beforeunload` ligado até o primeiro "copiar" do link de gestão (P5-B); botões "copiar" (`navigator.clipboard.writeText`) e "baixar QR" (`<a href={qrCodeDataUrl} download="qr-<slug>.png">`); aviso de destino `http:` quando `isInsecureDestination`; "Não foi possível gerar o QR code" quando `qrCodeDataUrl === null`. Nada do token vai para `localStorage`, cookie ou log.
+**Tela:** `create-link-form.tsx` usa `useActionState(createLink, { status: 'idle' })`; botão desabilitado com "Encurtando…" enquanto `isPending` (P3). `expiration-field.tsx` mostra "Expira em DD/MM/AAAA às 23:59 (horário de Brasília)" ou "Expira **hoje** às 23:59 (horário de Brasília)", calculado no navegador por `formatExpirationLabel(date: string, now: Date): { kind: 'today' } | { kind: 'date'; formatted: string }` (`src/components/expiration-label.ts`, puro, usa `todayInSaoPaulo`) (P7). `link-result-card.tsx`: link de gestão em destaque acima do link curto, com o aviso "guarde este link: não há recuperação" (P5-C); `beforeunload` ligado até o primeiro "copiar" do link de gestão (P5-B); botões "copiar" (`navigator.clipboard.writeText`) e "baixar QR" (`<a href={qrCodeDataUrl} download="qr-<slug>.png">`); aviso de destino `http:` quando `isInsecureDestination`; "Não foi possível gerar o QR code" quando `qrCodeDataUrl === null`. Nada do token vai para `localStorage`, cookie ou log.
 
 ### 8.4 Redirect (`[slug]/route.ts`, `redirect-handler.ts`)
 
@@ -659,7 +721,16 @@ Regras: `redirect.md`, `security-rate-limit.md`.
 // src/app/[slug]/route.ts
 export async function GET(request: Request, ctx: { params: Promise<{ slug: string }> }): Promise<Response>
 export async function HEAD(request: Request, ctx: { params: Promise<{ slug: string }> }): Promise<Response>
-// os dois chamam handleRedirect(request, slug, method)
+// os dois chamam handleRedirect com as dependências reais (scheduleAfter: after)
+
+// src/app/_lib/redirect-handler.ts
+export function handleRedirect(request: Request, slug: string, method: 'GET' | 'HEAD', deps: {
+  redirectService: RedirectService
+  clickEvents: ClickEventRepository
+  rateLimiter: RateLimiter
+  scheduleAfter: (task: () => Promise<void>) => void
+  nodeEnv: string | undefined
+}): Promise<Response>
 ```
 
 O `HEAD` próprio é obrigatório: sem ele, o Next 16 responde o `HEAD` executando o `GET` e consome o link. **`handleRedirect`:**
@@ -690,15 +761,43 @@ O `HEAD` próprio é obrigatório: sem ele, o Next 16 responde o `HEAD` executan
 
 Regras: `manage-page.md`, `security-token.md`, `error-map.md`.
 
-**Página (Server Component, dinâmica):**
+**Página (Server Component, dinâmica):** a `page.tsx` chama o *loader* e só renderiza o resultado:
+
+```ts
+// src/app/_lib/manage-page-loader.ts
+export function loadManagementPage(token: string, deps: {
+  linkService: Pick<LinkService, 'getManagementView'>
+  env: Record<string, string | undefined>
+  generateQrCode: (url: string) => Promise<string>
+}): Promise<
+  | { kind: 'not-found' }                 // → notFound()
+  | { kind: 'unavailable' }               // → tela "Serviço indisponível…"
+  | { kind: 'ok'; view: ManagementView; shortUrl: string; qrCodeDataUrl: string | null }
+>
+// erro inesperado propaga (a página de erro do Next responde 500)
+```
 
 1. `token` fora do formato → `notFound()` (sem banco).
 2. `getLinkService().getManagementView(token)`: `null` → `notFound()` (a mesma página para "não existe" e "fora do formato"). `RepositoryUnavailableError` → renderiza "Serviço indisponível. Tente novamente em instantes." (limitação: HTTP 200; ver §13).
 3. `resolveAppOrigin` → `shortUrl`; `null` → a mesma tela de indisponível + log de erro (RC2). QR com `generateQrCodeDataUrl(shortUrl)`; falhou → tela sem QR + aviso (P1b).
 4. Mostra: link curto, destino (texto escapado pelo React), estado ("ativo" ou o motivo), "N de M cliques · esgotado" ou "N cliques" (RC8), expiração, criação, nota "o detalhamento pode ficar um pouco abaixo do total" quando `detailBelowTotal`, dispositivos, top 10 referrers + "outros" (o balde `null` aparece como "direto ou desconhecido", com a explicação de que apps como WhatsApp não enviam referrer), "pré-visualizado N× por bots" e o gráfico.
 5. **Sem `loading.tsx` nesta rota**, para o `notFound()` responder `404` de verdade (com *streaming* já iniciado, o status não muda). **(conferir no `test:http`.)**
+6. **Link já desativado:** o estado mostra "Desativado em DD/MM/AAAA às HH:MM" e a página **não** mostra o botão "Desativar" (a ação seria inócua). Links expirados ou esgotados continuam com o botão.
 
-**Gráfico (`daily-clicks-chart.tsx`, S5):** Server Component; uma `<div>` por dia com altura `count / max * 100%`, `title="DD/MM: N cliques"`, rótulo "dias no horário de Brasília" e uma `<table>` "dia × cliques" visualmente oculta (classe `sr-only`) como alternativa em texto.
+**Textos (`manage-labels.ts`):**
+
+| Função | Saída |
+|---|---|
+| `describeLinkState(state)` | `Ativo`, `Desativado`, `Expirado`, `Limite de cliques atingido` |
+| `formatClickTotal(clickCount, maxClicks, state)` | `8 cliques`, `1 clique`, `3 de 10 cliques`, `10 de 10 cliques · esgotado` |
+| `formatDateTimeInSaoPaulo(date)` | `08/10/2026 às 12:05` |
+| `describeDevice(device)` | `Celular`, `Computador`, `Tablet`, `Desconhecido` |
+| `describeReferrer(host)` | o host, ou `Direto ou desconhecido` para `null` |
+| `formatBotPreviews(count)` | `Nenhuma pré-visualização por bots`, `Pré-visualizado 1× por bots`, `Pré-visualizado N× por bots` |
+
+**Página 404 global (`src/app/not-found.tsx`):** título "Página não encontrada", frase "Confira se o endereço foi copiado inteiro." e o link "Criar um novo link" para `/`. É a mesma para token inexistente e fora do formato.
+
+**Gráfico (`daily-clicks-chart.tsx`, S5):** Server Component; uma `<div>` por dia com altura `count / max * 100%` (**`0%` quando o maior dia é 0**, nunca `NaN`), `title="DD/MM: N cliques"` (`1 clique` no singular), rótulo "dias no horário de Brasília" e uma `<table>` "dia × cliques" visualmente oculta (classe `sr-only`) como alternativa em texto.
 
 **Desativação:** `deactivate-link-form.tsx` mostra "Desativar" → "Tem certeza? Não dá para desfazer" → "Sim, desativar", que envia um formulário com o token em `<input type="hidden">` para:
 
@@ -708,7 +807,7 @@ export async function deactivateLink(prev: DeactivateState, form: FormData): Pro
 // DeactivateState = { status: 'idle' } | { status: 'done'; message: string } | { status: 'error'; message: string }
 ```
 
-`deactivated`/`already-deactivated` → "Link desativado." + `revalidatePath` da página atual (conferir na tarefa); `not-found` → "Não foi possível desativar: link não encontrado."; `RepositoryUnavailableError` → "Não foi possível desativar agora. Tente em alguns minutos.". Sem rate limit (`error-map.md`). CSRF: proteção embutida das Server Actions; **não configurar `serverActions.allowedOrigins`**.
+A action só monta as dependências e chama `handleDeactivateLink(form: FormData, deps: { linkService: Pick<LinkService, 'deactivate'>; revalidate: (path: string) => void }): Promise<DeactivateState>` (`src/app/_lib/deactivate-link-handler.ts`), passando o `revalidatePath` como `revalidate`. Campo `token` ausente, como `File` ou fora do formato → a mesma resposta de "não encontrado", sem exceção. `deactivated`/`already-deactivated` → "Link desativado." + `revalidate('/manage/<token>')` (conferir na tarefa que a página atualiza); `not-found` → "Não foi possível desativar: link não encontrado."; `RepositoryUnavailableError` ou erro inesperado → "Não foi possível desativar agora. Tente em alguns minutos." + log (`database-unavailable` ou `unexpected-error`). Sem rate limit (`error-map.md`). CSRF: proteção embutida das Server Actions; **não configurar `serverActions.allowedOrigins`**.
 
 **Headers:** `Referrer-Policy: no-referrer`, `X-Robots-Tag: noindex` e `Cache-Control: no-store` pelo `next.config.ts` (§9.4), na regra que vem **depois** da global.
 
@@ -742,7 +841,7 @@ Regras: `.agents/rules/architecture-stack.md`, `architecture-persistence.md` (S1
 ### 9.1 `package.json`
 
 - `"engines": { "node": "24.x" }`, `"private": true`.
-- Versões **exatas**, instaladas sempre com `npm install <pacote>@<versão>`: `next@16.3.8`, `react` e `react-dom` na versão que o `next@16.3.8` declara, `prisma@7.10.0`, `@prisma/client@7.10.0`, `@prisma/adapter-pg@7.10.0`, `pg`, `@vercel/functions`, `@upstash/ratelimit`, `@upstash/redis`, `qrcode@1.5.4`; dev: `typescript@6.0.3`, `eslint-config-next@16.3.8`, `@next/env@16.3.8`, `vitest` (a 5.x que o `min-release-age` aceitar), `@types/*` necessários, Tailwind e o CLI do shadcn/ui. Versões que esta spec não fixa são escolhidas na tarefa com `npm view` e registradas no plano.
+- Versões **exatas**, instaladas sempre com `npm install <pacote>@<versão>`: `next@16.3.8`, `react` e `react-dom` na versão que o `next@16.3.8` declara, `prisma@7.10.0`, `@prisma/client@7.10.0`, `@prisma/adapter-pg@7.10.0`, `pg`, `@vercel/functions`, `@upstash/ratelimit`, `@upstash/redis`, `qrcode@1.5.4`; dev: `typescript@6.0.3`, `eslint-config-next@16.3.8`, **`eslint` 9.x** (o `eslint-plugin-import@2.32` e o `eslint-plugin-react@7.37`, dependências do `eslint-config-next`, não aceitam o ESLint 10; verificado em 2026-10-08), `@next/env@16.3.8`, `vitest` (a 5.x que o `min-release-age` aceitar), `@types/*` necessários, `tailwindcss` e `@tailwindcss/postcss` 4.x. O `npx shadcn init`/`add` acrescenta as dependências dos componentes (esperado: `class-variance-authority`, `clsx`, `tailwind-merge`, `lucide-react`, `tw-animate-css` e Radix), conferidas e registradas no plano. Versões que esta spec não fixa são escolhidas na tarefa com `npm view` e registradas no plano (seção "Versões escolhidas" do plano da fatia 1). React: a 19.x mais nova aceita (o `next@16.3.8` declara `^19.0.0`).
 - `"allowScripts"`: `prisma`, `@prisma/engines`, `esbuild`, `unrs-resolver` (revisar a cada dependência; o `strict-allow-scripts` acusa o que faltar).
 - Scripts:
 
@@ -753,6 +852,7 @@ Regras: `.agents/rules/architecture-stack.md`, `architecture-persistence.md` (S1
   "start": "next start",
   "postinstall": "prisma generate",
   "db:migrate": "prisma migrate deploy",
+  "db:migrate:test": "DATABASE_URL_UNPOOLED=postgresql://shorturl:shorturl-dev@127.0.0.1:5432/shorturl_test prisma migrate deploy",
   "lint": "eslint .",
   "typecheck": "tsc --noEmit",
   "test": "vitest run",
@@ -775,10 +875,12 @@ Base: a configuração do `eslint-config-next@16.3.8` (core-web-vitals + TypeScr
 - `import/no-extraneous-dependencies: 'error'` (dependência fantasma);
 - `react/no-danger: 'error'` (RC6);
 - `no-restricted-properties` contra `$queryRawUnsafe` e `$executeRawUnsafe`, e `no-restricted-syntax` contra `Prisma.raw` (RC3);
+- `ignores` global com `src/data/generated/**` (código gerado).
 - **S2, nesta ordem** (no flat config, a última configuração que casa com o arquivo define as opções da regra):
-  1. `files: ['src/**/*.{ts,tsx}']`, `ignores: ['src/data/**']`: `no-restricted-imports` com `patterns: [{ group: ['@/data/generated/*'], message: 'Só src/data/ importa o client do Prisma.' }]`;
-  2. `files: ['src/domain/**/*.ts']`: `no-restricted-imports` com lista branca (`group: ['*', '!./*', '!../*', '!@/domain/*']`, mensagem citando o AD-004).
-- **Na tarefa, provar a regra** com arquivos temporários em `src/domain/`: `import 'next/server'`, `import '@/data/generated/prisma'` e `import '@upstash/redis'` devem falhar; `import './x'`, `import '../y/z'` e `import '@/domain/link'` devem passar (atenção à ressalva da doc sobre reincluir arquivo de diretório excluído).
+  1. `files: ['src/**/*.{ts,tsx}']`, `ignores: ['src/data/**']`: `no-restricted-imports` barrando o client gerado (`@/data/generated/*` e caminho relativo até `data/generated/`), `@prisma/*` e `pg` (mensagem: "Só src/data/ importa o Prisma e o pg.");
+  2. `files: ['src/domain/**/*.ts']`, `ignores: ['src/domain/**/*.test.ts']`: `no-restricted-imports` com **lista branca** (mensagem citando o AD-004). O domínio só importa `./*` e `@/domain/*`; dentro de subpastas (`__fakes__/`), também `../*`, **sem nunca sair de `src/domain/`**. Qualquer pacote (inclusive `node:*`) e qualquer caminho relativo que saia do domínio (`../data/...`, `../infra/...`) é erro.
+  - Correção de 2026-10-08: a primeira versão, `group: ['*', '!./*', '!../*', '!@/domain/*']`, deixava o domínio importar `../data/...` e barrava o `vitest` nos testes do domínio. Se o estilo gitignore do `group` não fechar os casos (ressalva da doc sobre reincluir arquivo de diretório excluído), usar `patterns[].regex`.
+- **Prova permanente em `eslint.config.test.ts`** (API Node do ESLint, `lintText` com `filePath` simulado), com a tabela de casos da Tarefa 2 do plano da fatia 1: o domínio barra `next/server`, `@upstash/redis`, `node:crypto`, `@/data/generated/...`, `../data/...`, `../infra/...` e `@/app/...`, e aceita `./link`, `@/domain/link` e `../ports` dentro de `__fakes__/`; os testes do domínio importam `vitest`; fora de `src/data/`, `@prisma/client`, `pg` e o client gerado são erro; mais `react/no-danger`, as regras do SQL cru, `import/no-extraneous-dependencies` (`pngjs`, transitiva não declarada) e o `ignores` do código gerado.
 
 ### 9.4 `next.config.ts`
 
@@ -879,9 +981,9 @@ services:
 
 ### 9.8 Vitest
 
-- **`vitest.config.mts`:** `resolve: { tsconfigPaths: true }`; `test.env.DATABASE_URL` fixo em `postgresql://shorturl:shorturl-dev@127.0.0.1:5432/shorturl_test` (os testes nunca leem `.env*` nem conhecem a URL do Neon); dois `projects`: `unit` (`src/**/*.test.ts`, exceto `*.int.test.ts`) e `integration` (`src/**/*.int.test.ts`, `fileParallelism: false`, `setupFiles` que **recusa rodar se o host da URL não for `127.0.0.1` ou `localhost`** e faz `TRUNCATE click_events, links RESTART IDENTITY` antes de cada arquivo).
-- **`vitest.http.config.mts`:** `include: ['tests/http/**/*.http.test.ts']`, `fileParallelism: false`, `globalSetup` que sobe `next start -p 3000` (`child_process.spawn`) com `DATABASE_URL` do banco de teste e `APP_ORIGIN=http://localhost:3000` no ambiente, espera a porta responder e derruba o processo no fim. Os links de teste são gravados direto no banco pelo Prisma.
-- O banco de teste recebe as migrations com `DATABASE_URL_UNPOOLED=<url do shorturl_test> npm run db:migrate` (local e CI).
+- **`vitest.config.mts`:** `resolve: { tsconfigPaths: true }`; `test.env.DATABASE_URL` fixo em `postgresql://shorturl:shorturl-dev@127.0.0.1:5432/shorturl_test` (os testes nunca leem `.env*` nem conhecem a URL do Neon); dois `projects`: `unit` (`src/**/*.test.{ts,tsx}` e os `*.test.ts` da raiz, como `next.config.test.ts` e `eslint.config.test.ts`, exceto `*.int.test.ts`; o `.tsx` usa o JSX automático do React, conferido na fatia 3) e `integration` (`src/**/*.int.test.ts`, `fileParallelism: false`, `setupFiles: ['tests/setup/integration-setup.ts']`, que **recusa rodar se o host da URL não for `127.0.0.1` ou `localhost`** e faz `TRUNCATE click_events, links RESTART IDENTITY` antes de cada arquivo, com `pg`).
+- **`vitest.http.config.mts`:** `include: ['tests/http/**/*.http.test.ts']`, `fileParallelism: false`, `globalSetup` (`tests/http/global-setup.ts`) que **recusa subir se `http://127.0.0.1:3000` já responder** (um `npm run dev` esquecido faria os testes rodarem contra os falsos), sobe `next start -p 3000` (`child_process.spawn`) com `DATABASE_URL` do banco de teste e `APP_ORIGIN=http://localhost:3000` e **sem `USE_LOCAL_FAKES`** no ambiente, espera a porta responder (até 30 s) e derruba o processo no fim. Os links de teste são gravados direto no banco pelo Prisma (`tests/http/helpers/database.ts`, com `createPrismaClient`).
+- O banco de teste recebe as migrations com `npm run db:migrate:test` na máquina local; no CI, `npm run db:migrate` já aponta para o `shorturl_test` pelas variáveis do job.
 
 ### 9.9 `.env.example`
 
@@ -950,7 +1052,9 @@ A fonte é `.agents/context/error-map.md` (mensagens exatas e o que é logado). 
 
 ## 11. Plano de testes
 
-Regras: `.agents/rules/architecture-testing-ci.md`. TDD em todas as tarefas: o teste falha antes da implementação.
+Regras: `.agents/rules/architecture-testing-ci.md`. TDD em todas as tarefas: o teste falha antes da implementação. Os casos com valores concretos de cada teste, inclusive os do "Review Focus" (entradas que esta lista não cobria), estão nas tarefas dos três planos (`docs/superpowers/plans/2026-10-08-short-url-mvp-*.md`).
+
+**Configuração (unitários, na raiz):** `next.config.test.ts` (trava 2, trava das chaves, headers e a ordem das regras) e `eslint.config.test.ts` (S2, RC3, RC6, dependência fantasma). **Schema (integração):** `src/data/schema.int.test.ts` confere tipos, índices, FK `RESTRICT`, o enum e que `click_events` não tem coluna de IP nem de UA.
 
 **Unitários (Vitest, sem rede nem banco):**
 
@@ -1032,33 +1136,33 @@ Resumo; o motivo completo está no arquivo indicado.
 
 ## 16. Requisitos rastreados
 
-A coluna "Tarefa" aponta para o plano da fatia e é preenchida quando os planos forem escritos.
+A coluna "Tarefa" aponta para as tarefas dos planos (preenchida em 2026-10-08): P1 = `2026-10-08-short-url-mvp-1-base.md`, P2 = `…-mvp-2-create-redirect.md`, P3 = `…-mvp-3-manage.md`, em `docs/superpowers/plans/`. Status: `Planejado` → `Implementado` no fim da fatia que fecha o requisito.
 
 | ID | Requisito | Fatia | Tarefa | Status |
 |---|---|---|---|---|
-| RF01 | Encurtar uma URL válida e receber link curto, link de gestão (uma vez) e QR | 2 | — | Proposto |
-| RF02 | Limite de cliques opcional, de 1 a 1.000.000 | 1 (regra) · 2 (tela) | — | Proposto |
-| RF03 | Expiração opcional: duração pronta ou fim do dia em Brasília, com o rótulo da P7 | 1 · 2 | — | Proposto |
-| RF04 | Validação R1 a R6 com mensagem por regra | 1 · 2 | — | Proposto |
-| RF05 | R7: recusar URL do Safe Browsing com aviso "suspeito" e atribuição ao Google | 2 | — | Proposto |
-| RF06 | Aviso de destino `http:` | 2 | — | Proposto |
-| RF07 | Redirect 302 `no-store`; 404; 410 com motivo; 429; 503 | 2 | — | Proposto |
-| RF08 | Registro do clique (dispositivo, referrer, data) fora do caminho crítico, só com link ativo | 2 | — | Proposto |
-| RF09 | Bots de preview e `HEAD` não consomem nem revelam o destino de link com limite | 2 | — | Proposto |
-| RF10 | Gestão: total, dispositivos, referrers, gráfico de 30 dias (só humanos), bots à parte | 3 | — | Proposto |
-| RF11 | QR na página de gestão | 3 | — | Proposto |
-| RF12 | Desativação irreversível, com confirmação e idempotente | 1 (regra) · 3 (tela) | — | Proposto |
-| RF13 | Token exibido uma vez, em destaque, com `beforeunload` até copiar | 2 | — | Proposto |
-| RF14 | `npm run dev` sem chaves, com falsos locais e as duas travas | 1 (travas) · 2 (falsos) | — | Proposto |
-| RNF01 | Limite de cliques respeitado sob concorrência (UPDATE atômico, teste com Postgres real) | 2 | — | Proposto |
-| RNF02 | Rate limit 10/min + 100/dia na criação e 300/min no redirect, `/64`, fail-open no redirect e fail-closed na criação | 2 | — | Proposto |
-| RNF03 | Headers globais e CSP (RC6); headers da gestão | 1 · 3 | — | Proposto |
-| RNF04 | Token só como hash no banco; nunca em log, cookie, `localStorage` ou redirect | 1 · 2 | — | Proposto |
-| RNF05 | IP nunca persistido; UA cru nunca persistido | 2 | — | Proposto |
-| RNF06 | AD-004 garantido por lint (S2) | 1 | — | Proposto |
-| RNF07 | CI sem segredos, ações por SHA, `contents: read`; publicação só com o CI verde | 1 | — | Proposto |
-| RNF08 | Supply chain: `.npmrc` endurecido, `allowScripts`, versões exatas, sem dependência recusada | 1 | — | Proposto |
-| RNF09 | Timeouts: banco 5 s, Upstash 1 s, Google 2 s | 2 | — | Proposto |
-| RNF10 | Migrations aditivas no `buildCommand`; preview com branch do Neon e Standard Protection | 1 | — | Proposto |
-| RNF11 | Interface e README em pt-BR | 2 · 3 | — | Proposto |
-| RNF12 | README completo do PRD, com as limitações da §13 | 3 | — | Proposto |
+| RF01 | Encurtar uma URL válida e receber link curto, link de gestão (uma vez) e QR | 2 | P2: T18–T21 | Planejado |
+| RF02 | Limite de cliques opcional, de 1 a 1.000.000 | 1 (regra) · 2 (tela) | P1: T7, T14 · P2: T16, T20 | Planejado |
+| RF03 | Expiração opcional: duração pronta ou fim do dia em Brasília, com o rótulo da P7 | 1 · 2 | P1: T10, T14 · P2: T16, T20 | Planejado |
+| RF04 | Validação R1 a R6 com mensagem por regra | 1 · 2 | P1: T11, T14 · P2: T17, T20 | Planejado |
+| RF05 | R7: recusar URL do Safe Browsing com aviso "suspeito" e atribuição ao Google | 2 | P2: T5, T6, T7, T17 | Planejado |
+| RF06 | Aviso de destino `http:` | 2 | P2: T19, T21 | Planejado |
+| RF07 | Redirect 302 `no-store`; 404; 410 com motivo; 429; 503 | 2 | P1: T16 · P2: T14, T15 | Planejado |
+| RF08 | Registro do clique (dispositivo, referrer, data) fora do caminho crítico, só com link ativo | 2 | P2: T4, T15 | Planejado |
+| RF09 | Bots de preview e `HEAD` não consomem nem revelam o destino de link com limite | 2 | P1: T16 · P2: T15 | Planejado |
+| RF10 | Gestão: total, dispositivos, referrers, gráfico de 30 dias (só humanos), bots à parte | 3 | P1: T17, T18 · P3: T1–T4 | Planejado |
+| RF11 | QR na página de gestão | 3 | P3: T3, T4 | Planejado |
+| RF12 | Desativação irreversível, com confirmação e idempotente | 1 (regra) · 3 (tela) | P1: T15 · P3: T5 | Planejado |
+| RF13 | Token exibido uma vez, em destaque, com `beforeunload` até copiar | 2 | P2: T21 | Planejado |
+| RF14 | `npm run dev` sem chaves, com falsos locais e as duas travas | 1 (travas) · 2 (falsos) | P1: T3 · P2: T7, T11, T13 | Planejado |
+| RNF01 | Limite de cliques respeitado sob concorrência (UPDATE atômico, teste com Postgres real) | 2 | P2: T3 | Planejado |
+| RNF02 | Rate limit 10/min + 100/dia na criação e 300/min no redirect, `/64`, fail-open no redirect e fail-closed na criação | 2 | P2: T10–T12, T15, T19 | Planejado |
+| RNF03 | Headers globais e CSP (RC6); headers da gestão | 1 · 3 | P1: T3 · P3: T4 | Planejado |
+| RNF04 | Token só como hash no banco; nunca em log, cookie, `localStorage` ou redirect | 1 · 2 | P1: T6, T9 · P2: T8, T19, T21 | Planejado |
+| RNF05 | IP nunca persistido; UA cru nunca persistido | 2 | P1: T6 · P2: T4, T15 | Planejado |
+| RNF06 | AD-004 garantido por lint (S2) | 1 | P1: T2 | Planejado |
+| RNF07 | CI sem segredos, ações por SHA, `contents: read`; publicação só com o CI verde | 1 | P1: T19–T21 | Planejado |
+| RNF08 | Supply chain: `.npmrc` endurecido, `allowScripts`, versões exatas, sem dependência recusada | 1 | P1: T1 | Planejado |
+| RNF09 | Timeouts: banco 5 s, Upstash 1 s, Google 2 s | 2 | P2: T1, T6, T12 | Planejado |
+| RNF10 | Migrations aditivas no `buildCommand`; preview com branch do Neon e Standard Protection | 1 | P1: T6, T20 | Planejado |
+| RNF11 | Interface e README em pt-BR | 2 · 3 | P2: T14, T17, T20, T21 · P3: T3, T4, T6 | Planejado |
+| RNF12 | README completo do PRD, com as limitações da §13 | 3 | P3: T6 | Planejado |

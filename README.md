@@ -4,7 +4,7 @@ Encurtador de links com analytics, sem login: cada link é gerenciado por um tok
 
 ## Status
 
-**Em design. Ainda não há código da aplicação.** A spec do MVP foi aprovada em 2026-10-08 e a implementação acontece em três fatias, cada uma com uma branch e um PR próprios. A `main` só recebe código com o CI verde. Este README é provisório: a versão completa (diagrama de system design, "como escalaria", como rodar e testar, limitações documentadas) será escrita na fatia 3.
+**Planejado. Ainda não há código da aplicação.** A spec do MVP e os três planos de implementação foram aprovados em 2026-10-08. A implementação acontece em três fatias, cada uma com uma branch e um PR próprios. A `main` só recebe código com o CI verde. Este README é provisório: a versão completa (diagrama de system design, "como escalaria", como rodar e testar, limitações documentadas) será escrita na fatia 3.
 
 ## O que o produto faz (escopo do MVP)
 
@@ -39,6 +39,7 @@ Encurtador de links com analytics, sem login: cada link é gerenciado por um tok
 - [PRD](docs/superpowers/PRD.md): problema, público, escopo e critério de "pronto".
 - [ADR](docs/superpowers/ADR.md): decisões de arquitetura (AD-001 a AD-004).
 - [Spec do MVP](docs/superpowers/specs/2026-10-07-short-url-mvp-design.md): design detalhado.
+- [Planos de implementação](docs/superpowers/plans/): um por fatia, com as tarefas, os casos de teste e quem faz cada uma.
 - [Visão geral do design](docs/diagrams/short-url-design.svg): diagrama com regras, stack, system design, fluxos, modelo de dados, entrega e requisitos.
 - [AGENTS.md](AGENTS.md): instruções para agentes de IA. O desenvolvimento é guiado por IA, com o Claude Code e o Antigravity.
 - [Execução dos planos](.agents/rules/execution-workflow.md): TDD em ciclo *maker-checker*. Um modelo escreve o teste, outro implementa, um terceiro testa no navegador, e cada um tem uma trava mecânica com testes próprios ([`.agents/agents/`](.agents/agents/)).
